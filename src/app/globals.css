@@ -1,26 +1,111 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ETHIMOS / WILLIAM LEONEL - Design System
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #172033;
+
+  /* Brand Colors */
+  --brand-primary: #253164;
+  --brand-dark: #0d1630;
+  --brand-deep: #162246;
+  --brand-accent: #9dbdeb;
+  --brand-white: #f8fafc;
+  --brand-gold: #C9A84C;
+
+  /* Surfaces */
+  --card: #ffffff;
+  --card-foreground: #172033;
+  --muted: #eef2f7;
+  --muted-foreground: #5c6984;
+
+  /* Borders */
+  --border: #d7deea;
+  --border-focus: #253164;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-white: var(--brand-white);
+  --color-brand-gold: var(--brand-gold);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --font-sans: var(--font-montserrat);
+  --font-display: var(--font-montserrat);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  background-image:
+    radial-gradient(circle at top left, rgba(157, 189, 235, 0.18), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 1));
+  text-rendering: optimizeLegibility;
+}
+
+/* Hero gradient */
+.hero-gradient {
+  background: linear-gradient(135deg, #0d1630 0%, #18244a 42%, #253164 72%, #162246 100%);
+}
+
+.light-hero-gradient {
+  background:
+    radial-gradient(circle at top left, rgba(157, 189, 235, 0.3), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(37, 49, 100, 0.14), transparent 32%),
+    linear-gradient(180deg, #fdfefe 0%, #f4f7fb 52%, #edf2f8 100%);
+}
+
+/* Subtle pattern overlay */
+.pattern-overlay {
+  background-image: radial-gradient(circle at 1px 1px, rgba(157, 189, 235, 0.07) 1px, transparent 0);
+  background-size: 40px 40px;
+}
+
+.pattern-overlay-light {
+  background-image: radial-gradient(circle at 1px 1px, rgba(37, 49, 100, 0.08) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+/* Gold accent gradient */
+.gold-gradient {
+  background: linear-gradient(135deg, #C9A84C 0%, #E8D48B 50%, #C9A84C 100%);
+}
+
+/* Counter animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+/* Section divider */
+.section-divider {
+  background: linear-gradient(90deg, transparent 0%, #253164 50%, transparent 100%);
+  height: 1px;
 }
