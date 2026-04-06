@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { ReactNode } from "react";
 import { contactInfo } from "@/lib/contact";
+import { siteTheme } from "@/lib/theme";
 
 const LinkedinIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -42,17 +43,24 @@ const quickLinks = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-brand-primary/10 bg-white text-brand-dark">
+    <footer className="theme-footer border-t border-brand-primary/10 text-foreground">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="min-w-0 lg:col-span-1">
             <Image
-              src="/images/ethimos_investimentos_logo.png"
+              src={siteTheme.light.logoSrc}
               alt="Ethimos Investimentos"
               width={240}
               height={64}
-              className="mb-4 h-14 w-auto"
+              className="theme-logo-light mb-4 h-14 w-auto"
+            />
+            <Image
+              src={siteTheme.dark.logoSrc}
+              alt="Ethimos Investimentos"
+              width={240}
+              height={64}
+              className="theme-logo-dark mb-4 h-14 w-auto"
             />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               Assessoria de investimentos personalizada com a solidez do maior banco de investimentos da América Latina.
@@ -64,7 +72,7 @@ export function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-primary/10 bg-muted text-brand-primary transition-all hover:bg-brand-primary hover:text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-primary/10 bg-white text-brand-primary transition-all hover:bg-brand-primary hover:text-white"
                   aria-label={social.label}
                 >
                   <social.icon />
@@ -128,7 +136,7 @@ export function Footer() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               Escritório credenciado ao <strong className="text-brand-dark">BTG Pactual</strong>, o maior banco de investimentos da América Latina.
             </p>
-            <div className="mt-4 rounded-lg border border-brand-primary/10 bg-muted px-4 py-3">
+            <div className="mt-4 rounded-lg border border-brand-primary/10 bg-white px-4 py-3">
               <p className="text-xs leading-relaxed text-muted-foreground">
                 Ethimos Investimentos - Agente Autônomo de Investimentos credenciado ao BTG Pactual S.A.
               </p>

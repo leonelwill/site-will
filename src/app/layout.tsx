@@ -94,6 +94,12 @@ export default function RootLayout({
     <html lang="pt-BR" className={`${montserrat.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background pb-20 text-foreground xl:pb-0">
         <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{localStorage.setItem('site-theme','light');document.documentElement.dataset.siteTheme='light';}catch(e){document.documentElement.dataset.siteTheme='light';}",
+          }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(financialServiceSchema) }}
         />

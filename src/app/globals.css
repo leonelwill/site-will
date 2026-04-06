@@ -4,14 +4,23 @@
    ETHIMOS / WILLIAM LEONEL - Design System
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/*
+  ALTERAR CORES DOS TEMAS:
+  - tema claro: tokens base em :root + .theme-light-surface
+  - tema escuro: .hero-gradient + .theme-dark-surface + .theme-dark-panel
+
+  ALTERAR LOGOS E CLASSES PRINCIPAIS:
+  - src/lib/theme.ts
+*/
+
 :root {
   --background: #f8fafc;
   --foreground: #172033;
 
   /* Brand Colors */
   --brand-primary: #253164;
-  --brand-dark: #0d1630;
-  --brand-deep: #162246;
+  --brand-dark: #0f152b;
+  --brand-deep: #131a30;
   --brand-accent: #9dbdeb;
   --brand-white: #f8fafc;
   --brand-gold: #C9A84C;
@@ -25,6 +34,22 @@
   /* Borders */
   --border: #d7deea;
   --border-focus: #253164;
+}
+
+:root[data-site-theme="dark"] {
+  --background: #0f152b;
+  --foreground: #f8fafc;
+  --brand-primary: #253164;
+  --brand-dark: #0f152b;
+  --brand-deep: #131a30;
+  --brand-accent: #9dbdeb;
+  --brand-white: #f8fafc;
+  --card: #131a30;
+  --card-foreground: #f8fafc;
+  --muted: #10182f;
+  --muted-foreground: #c2d2eb;
+  --border: rgba(157, 189, 235, 0.18);
+  --border-focus: #9dbdeb;
 }
 
 @theme inline {
@@ -55,21 +80,146 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   background-image:
-    radial-gradient(circle at top left, rgba(157, 189, 235, 0.18), transparent 32%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 1));
+    radial-gradient(circle at top left, rgba(157, 189, 235, 0.24), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 248, 253, 1));
   text-rendering: optimizeLegibility;
+}
+
+:root[data-site-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at top left, rgba(157, 189, 235, 0.12), transparent 30%),
+    linear-gradient(180deg, #0f152b 0%, #131a30 50%, #0f152b 100%);
 }
 
 /* Hero gradient */
 .hero-gradient {
-  background: linear-gradient(135deg, #0d1630 0%, #18244a 42%, #253164 72%, #162246 100%);
+  background: linear-gradient(135deg, #0f152b 0%, #131a30 46%, #253164 100%);
 }
 
 .light-hero-gradient {
   background:
-    radial-gradient(circle at top left, rgba(157, 189, 235, 0.3), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(37, 49, 100, 0.14), transparent 32%),
-    linear-gradient(180deg, #fdfefe 0%, #f4f7fb 52%, #edf2f8 100%);
+    radial-gradient(circle at top left, rgba(157, 189, 235, 0.45), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(37, 49, 100, 0.12), transparent 34%),
+    linear-gradient(180deg, #fdfefe 0%, #f3f8fd 55%, #e9f1fa 100%);
+}
+
+.theme-light-surface {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(157, 189, 235, 0.14)),
+    rgba(255, 255, 255, 0.94);
+  color: var(--brand-dark);
+}
+
+.theme-dark-surface {
+  background: linear-gradient(135deg, #0f152b 0%, #131a30 46%, #253164 100%);
+  color: white;
+}
+
+.theme-dark-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05)),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(157, 189, 235, 0.18);
+}
+
+.theme-header {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+:root[data-site-theme="dark"] .theme-header {
+  background: rgba(15, 21, 43, 0.94);
+}
+
+.theme-mobile-menu {
+  background: rgba(255, 255, 255, 0.98);
+}
+
+:root[data-site-theme="dark"] .theme-mobile-menu {
+  background: rgba(19, 26, 48, 0.98);
+}
+
+.theme-footer {
+  background: #ffffff;
+  color: var(--foreground);
+  background-image: none;
+}
+
+.theme-section {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.theme-section-muted {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.theme-card-surface {
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+}
+
+.theme-card-soft {
+  background: color-mix(in srgb, var(--card) 78%, var(--background) 22%);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+}
+
+.theme-hero-shell {
+  background:
+    radial-gradient(circle at top left, rgba(157, 189, 235, 0.45), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(37, 49, 100, 0.12), transparent 34%),
+    linear-gradient(180deg, #fdfefe 0%, #f3f8fd 55%, #e9f1fa 100%);
+}
+
+:root[data-site-theme="dark"] .theme-hero-shell {
+  background: linear-gradient(135deg, #0f152b 0%, #131a30 46%, #253164 100%);
+}
+
+.theme-hero-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(37, 49, 100, 0.1);
+}
+
+:root[data-site-theme="dark"] .theme-hero-panel {
+  background: rgba(19, 26, 48, 0.84);
+  border: 1px solid rgba(157, 189, 235, 0.18);
+  color: white;
+}
+
+.theme-logo-light {
+  display: block;
+}
+
+.theme-logo-dark {
+  display: none;
+}
+
+:root[data-site-theme="dark"] .theme-logo-light {
+  display: none;
+}
+
+:root[data-site-theme="dark"] .theme-logo-dark {
+  display: block;
+}
+
+:root[data-site-theme="dark"] .theme-dark-surface .text-brand-dark,
+:root[data-site-theme="dark"] .theme-dark-panel .text-brand-dark,
+:root[data-site-theme="dark"] .theme-card-surface .text-brand-dark,
+:root[data-site-theme="dark"] .theme-card-soft .text-brand-dark,
+:root[data-site-theme="dark"] .theme-hero-panel .text-brand-dark,
+:root[data-site-theme="dark"] .theme-footer .text-brand-dark {
+  color: var(--foreground);
+}
+
+:root[data-site-theme="dark"] .theme-dark-surface .text-muted-foreground,
+:root[data-site-theme="dark"] .theme-dark-panel .text-muted-foreground,
+:root[data-site-theme="dark"] .theme-card-surface .text-muted-foreground,
+:root[data-site-theme="dark"] .theme-card-soft .text-muted-foreground,
+:root[data-site-theme="dark"] .theme-hero-panel .text-muted-foreground,
+:root[data-site-theme="dark"] .theme-footer .text-muted-foreground {
+  color: var(--muted-foreground);
 }
 
 /* Subtle pattern overlay */

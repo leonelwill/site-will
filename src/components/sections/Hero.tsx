@@ -8,7 +8,7 @@ export function Hero() {
   return (
     <section
       id="inicio"
-      className="light-hero-gradient relative flex min-h-screen items-center overflow-hidden pt-24"
+      className="theme-hero-shell relative flex min-h-screen items-center overflow-hidden pt-24"
     >
       <div className="pattern-overlay-light absolute inset-0" />
 
@@ -129,7 +129,7 @@ export function Hero() {
                   </div>
                 </div>
 
-                <div className="mt-8 rounded-2xl bg-brand-dark px-5 py-4 text-white shadow-xl shadow-brand-primary/15">
+                <div className="theme-dark-surface mt-8 rounded-2xl px-5 py-4 text-white shadow-xl shadow-brand-primary/15">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-brand-accent">

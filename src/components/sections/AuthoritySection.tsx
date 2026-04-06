@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { AnimateOnScroll } from "@/components/ui/AnimateOnScroll";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { siteTheme } from "@/lib/theme";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -62,7 +64,7 @@ const steps = [
 
 export function AuthoritySection() {
   return (
-    <section id="autoridade" className="bg-muted py-24">
+    <section id="autoridade" className="theme-section-muted py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <AnimateOnScroll>
           <SectionHeading
@@ -73,9 +75,9 @@ export function AuthoritySection() {
         </AnimateOnScroll>
 
         <AnimateOnScroll delay={0.08}>
-          <div className="mt-12 grid gap-4 rounded-[2rem] border border-brand-primary/10 bg-white/90 p-6 shadow-xl shadow-brand-primary/8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="theme-card-surface mt-12 grid gap-4 rounded-[2rem] p-6 shadow-xl shadow-brand-primary/8 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
-              <div key={stat.label} className="rounded-2xl bg-muted/70 px-5 py-4">
+              <div key={stat.label} className="theme-card-soft rounded-2xl px-5 py-4">
                 <p className="text-2xl font-bold text-brand-dark">{stat.value}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{stat.label}</p>
               </div>
@@ -87,7 +89,7 @@ export function AuthoritySection() {
           <div className="grid gap-6 md:grid-cols-3">
             {authorityCards.map((card, index) => (
               <AnimateOnScroll key={card.title} delay={index * 0.08}>
-                <div className="rounded-3xl border border-brand-primary/10 bg-white p-7 shadow-lg shadow-brand-primary/5 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-primary/10">
+                <div className="theme-card-surface rounded-3xl p-7 shadow-lg shadow-brand-primary/5 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-primary/10">
                   <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-primary/5">
                     <card.icon className="text-brand-primary" size={26} />
                   </div>
@@ -101,7 +103,14 @@ export function AuthoritySection() {
           </div>
 
           <AnimateOnScroll delay={0.15}>
-            <div className="rounded-[2rem] bg-brand-dark p-8 text-white shadow-2xl shadow-brand-primary/15 sm:p-10">
+            <div className={`${siteTheme.dark.surfaceClass} rounded-[2rem] p-8 text-white shadow-2xl shadow-brand-primary/15 sm:p-10`}>
+              <Image
+                src={siteTheme.dark.logoSrc}
+                alt="Ethimos Investimentos"
+                width={170}
+                height={42}
+                className="h-10 w-auto"
+              />
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-accent">
                 Como funciona
               </p>
@@ -112,7 +121,7 @@ export function AuthoritySection() {
                 {steps.map((step) => (
                   <div
                     key={step.title}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-5"
+                    className={`${siteTheme.dark.panelClass} rounded-2xl p-5`}
                   >
                     <div className="flex items-start gap-4">
                       <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-accent/20">

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { siteTheme } from "@/lib/theme";
 
 const navLinks = [
   { label: "Início", href: "#inicio" },
@@ -32,10 +33,10 @@ export function Navbar() {
   return (
     <nav
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300",
+        "theme-header fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300",
         scrolled
-          ? "border-brand-primary/10 bg-white/95 shadow-lg shadow-brand-primary/5 backdrop-blur-xl"
-          : "border-transparent bg-white/90 backdrop-blur-md"
+          ? "border-brand-primary/10 shadow-lg shadow-brand-primary/5 backdrop-blur-xl"
+          : "border-brand-primary/10 backdrop-blur-md"
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -43,12 +44,23 @@ export function Navbar() {
           {/* Logo */}
           <a href="#inicio" className="flex items-center gap-3">
             <Image
-              src="/images/logo_ethimos_blue.png"
+              src={siteTheme.light.logoSrc}
               alt="Ethimos Investimentos"
               width={160}
               height={40}
               className={cn(
-                "h-10 w-auto transition-all duration-300",
+                "theme-logo-light h-10 w-auto transition-all duration-300",
+                scrolled && "h-9"
+              )}
+              priority
+            />
+            <Image
+              src={siteTheme.dark.logoSrc}
+              alt="Ethimos Investimentos"
+              width={160}
+              height={40}
+              className={cn(
+                "theme-logo-dark h-10 w-auto transition-all duration-300",
                 scrolled && "h-9"
               )}
               priority
@@ -61,7 +73,7 @@ export function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-brand-dark/80 transition-colors hover:text-brand-primary"
+              className="text-sm font-medium text-brand-dark/80 transition-colors hover:text-brand-primary"
               >
                 {link.label}
               </a>
@@ -75,24 +87,26 @@ export function Navbar() {
           </div>
 
           {/* Mobile Menu Button */}
-          <button
+          <div className="flex items-center gap-2 md:hidden">
+            <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2 text-brand-dark md:hidden"
+            className="rounded-full bg-brand-primary/8 p-2 text-brand-dark md:hidden"
             aria-label="Menu"
           >
             {isOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="rounded-b-2xl border border-brand-primary/10 bg-white/95 pb-6 shadow-xl shadow-brand-primary/10 backdrop-blur-xl md:hidden">
+          <div className="theme-mobile-menu rounded-b-2xl border border-brand-primary/10 pb-6 shadow-xl shadow-brand-primary/10 backdrop-blur-xl md:hidden">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsOpen(false)}
-                className="block px-4 py-3 text-sm font-medium text-brand-dark/80 transition-colors hover:text-brand-primary"
+                className="block px-4 py-3 text-sm font-medium text-brand-dark/88 transition-colors hover:text-brand-primary"
               >
                 {link.label}
               </a>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AnimateOnScroll } from "@/components/ui/AnimateOnScroll";
 import {
@@ -13,6 +14,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { contactInfo } from "@/lib/contact";
+import { siteTheme } from "@/lib/theme";
 
 const patrimonioRanges = [
   "Até R$ 100 mil",
@@ -104,6 +106,13 @@ export function ContactCTA() {
           {/* Text */}
           <AnimateOnScroll>
             <div>
+              <Image
+                src={siteTheme.dark.logoSrc}
+                alt="Ethimos Investimentos"
+                width={180}
+                height={44}
+                className="mb-6 h-10 w-auto"
+              />
               <p className="mb-4 text-sm font-semibold uppercase tracking-widest text-brand-accent">
                 Solicite seu contato
               </p>
@@ -117,7 +126,7 @@ export function ContactCTA() {
               </p>
 
               <div className="mt-10 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className={`${siteTheme.dark.panelClass} rounded-2xl p-5`}>
                   <div className="flex items-center gap-3 text-white">
                     <Clock3 size={20} className="shrink-0 text-brand-accent" />
                     <span className="font-semibold">Retorno rápido</span>
@@ -126,7 +135,7 @@ export function ContactCTA() {
                     Priorização para responder em até 1 dia útil com os próximos passos.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className={`${siteTheme.dark.panelClass} rounded-2xl p-5`}>
                   <div className="flex items-center gap-3 text-white">
                     <ShieldCheck size={20} className="shrink-0 text-brand-accent" />
                     <span className="font-semibold">Contato seguro</span>

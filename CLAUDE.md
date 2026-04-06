@@ -22,6 +22,22 @@ Site institucional e de captacao de leads para a assessoria de investimentos do 
 
 ---
 
+## Ambiente e Deploy
+
+- Desenvolvimento local deve usar `.env.local`
+- Vercel deve usar variaveis configuradas no painel do projeto
+- `NEXT_PUBLIC_SITE_URL` local: `http://localhost:3000`
+- `NEXT_PUBLIC_SITE_URL` em deploy: `https://williamleonel.com.br`
+- E-mail atual de notificacao de lead: `william.leonel@ethimos.com.br`
+- Variaveis esperadas:
+  - `RESEND_API_KEY`
+  - `LEAD_NOTIFICATION_EMAIL`
+  - `LEAD_FROM_EMAIL`
+  - `NEXT_PUBLIC_SITE_URL`
+  - `LEAD_WEBHOOK_URL` opcional
+
+---
+
 ## Arquitetura de Pastas
 
 ```text

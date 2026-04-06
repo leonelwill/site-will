@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Site William Leonel
+
+Landing page institucional e de captacao de leads para a assessoria de investimentos do William Leonel, vinculada a Ethimos Investimentos / BTG Pactual.
 
 ## Getting Started
 
-First, run the development server:
+1. Crie o arquivo `.env.local` com base em `.env.example`.
+2. Para desenvolvimento local, use `NEXT_PUBLIC_SITE_URL=http://localhost:3000`.
+3. Na Vercel, use `NEXT_PUBLIC_SITE_URL=https://williamleonel.com.br`.
+4. Rode o servidor:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `RESEND_API_KEY`
+- `LEAD_NOTIFICATION_EMAIL`
+- `LEAD_FROM_EMAIL`
+- `NEXT_PUBLIC_SITE_URL`
+- `LEAD_WEBHOOK_URL` opcional
 
-## Learn More
+O arquivo `.env.local` e outras variantes locais ja estao ignorados no Git.
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+O projeto esta configurado para deploy na Vercel com dominio final em [https://williamleonel.com.br](https://williamleonel.com.br).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Ao alterar variaveis de ambiente na Vercel, faca um novo deploy para garantir que o build use os valores atualizados.
 
-## Deploy on Vercel
+## Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16
+- React 19
+- TypeScript 5
+- Tailwind CSS 4
+- Framer Motion
+- Vercel

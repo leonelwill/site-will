@@ -4,6 +4,7 @@ import { AnimateOnScroll } from "@/components/ui/AnimateOnScroll";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ArrowRight, Building2, MapPin, MessageCircle, ShieldCheck, Users } from "lucide-react";
 import { contactInfo } from "@/lib/contact";
+import { siteTheme } from "@/lib/theme";
 
 const profileItems = [
   {
@@ -30,11 +31,11 @@ const profileItems = [
 
 export function AboutMe() {
   return (
-    <section id="sobre" className="py-24 bg-white">
+    <section id="sobre" className="theme-section py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-start gap-16 lg:grid-cols-[0.9fr_1.1fr]">
           <AnimateOnScroll>
-            <div className="rounded-[2rem] border border-brand-primary/10 bg-brand-dark p-8 text-white shadow-2xl shadow-brand-primary/15 sm:p-10">
+            <div className={`${siteTheme.dark.surfaceClass} rounded-[2rem] border border-brand-accent/10 p-8 text-white shadow-2xl shadow-brand-primary/15 sm:p-10`}>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-accent">
                 Sobre o atendimento
               </p>
@@ -46,7 +47,7 @@ export function AboutMe() {
                 A conversa precisa gerar clareza, não confusão.
               </p>
 
-              <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className={`${siteTheme.dark.panelClass} mt-8 rounded-2xl p-5`}>
                 <p className="text-sm leading-relaxed text-white/72">
                   Para quem chega pelas redes sociais, o primeiro contato precisa ser simples,
                   humano e útil desde o início.
@@ -77,7 +78,7 @@ export function AboutMe() {
               {profileItems.map((item) => (
                 <div
                   key={item.title}
-                  className="rounded-2xl border border-brand-primary/10 bg-muted/55 p-6 shadow-sm shadow-brand-primary/5"
+                  className="theme-card-soft rounded-2xl p-6 shadow-sm shadow-brand-primary/5"
                 >
                   <div className="flex gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-primary/5">
