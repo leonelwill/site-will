@@ -35,13 +35,23 @@ const contactPreferences = [
   { label: "E-mail", value: "email" },
 ] as const;
 
+interface ContactFormData {
+  name: string;
+  email: string;
+  phone: string;
+  patrimonio: string;
+  goal: string;
+  contactPreference: (typeof contactPreferences)[number]["value"];
+  message: string;
+}
+
 export function ContactCTA() {
   const searchParams = useSearchParams();
   const goalFromQuery = searchParams.get("goal");
   const initialGoal = goals.includes(goalFromQuery ?? "") ? goalFromQuery! : goals[0];
 
   const [formState, setFormState] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ContactFormData>({
     name: "",
     email: "",
     phone: "",

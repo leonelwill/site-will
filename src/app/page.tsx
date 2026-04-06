@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Hero } from "@/components/sections/Hero";
 import { AboutMe } from "@/components/sections/AboutMe";
 import { AuthoritySection } from "@/components/sections/AuthoritySection";
@@ -11,7 +12,9 @@ export default function Home() {
       <AuthoritySection />
       <AboutMe />
       <Services />
-      <ContactCTA />
+      <Suspense fallback={null}>
+        <ContactCTA />
+      </Suspense>
     </>
   );
 }
