@@ -13,17 +13,26 @@ interface LeadPayload {
   timestamp: string;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function formatLeadHtml(lead: LeadPayload) {
   return `
     <h2>Novo lead do site</h2>
-    <p><strong>Nome:</strong> ${lead.name}</p>
-    <p><strong>Telefone:</strong> ${lead.phone || "-"}</p>
-    <p><strong>E-mail:</strong> ${lead.email || "-"}</p>
-    <p><strong>Patrimônio:</strong> ${lead.patrimonio || "-"}</p>
-    <p><strong>Objetivo:</strong> ${lead.goal || "-"}</p>
-    <p><strong>Canal preferido:</strong> ${lead.contactPreference || "-"}</p>
-    <p><strong>Mensagem:</strong> ${lead.message || "-"}</p>
-    <p><strong>Recebido em:</strong> ${lead.timestamp}</p>
+    <p><strong>Nome:</strong> ${escapeHtml(lead.name)}</p>
+    <p><strong>Telefone:</strong> ${escapeHtml(lead.phone || "-")}</p>
+    <p><strong>E-mail:</strong> ${escapeHtml(lead.email || "-")}</p>
+    <p><strong>Patrimônio:</strong> ${escapeHtml(lead.patrimonio || "-")}</p>
+    <p><strong>Objetivo:</strong> ${escapeHtml(lead.goal || "-")}</p>
+    <p><strong>Canal preferido:</strong> ${escapeHtml(lead.contactPreference || "-")}</p>
+    <p><strong>Mensagem:</strong> ${escapeHtml(lead.message || "-")}</p>
+    <p><strong>Recebido em:</strong> ${escapeHtml(lead.timestamp)}</p>
   `;
 }
 
@@ -67,13 +76,24 @@ async function sendLeadWithResend(lead: LeadPayload) {
   });
 
   if (!response.ok) {
-    throw new Error(`Resend respondeu com status ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`Resend respondeu com status ${response.status}: ${errorText}`);
   }
 
   return { delivered: true, channel: "resend" as const };
 }
 
 export async function POST(request: Request) {
+  // Diagnóstico temporário — remover após confirmar envio funcionando
+  console.log("[lead/route] env check:", {
+    hasResendKey: Boolean(process.env.RESEND_API_KEY),
+    resendKeyLength: process.env.RESEND_API_KEY?.length ?? 0,
+    hasNotificationEmail: Boolean(process.env.LEAD_NOTIFICATION_EMAIL),
+    hasFromEmail: Boolean(process.env.LEAD_FROM_EMAIL),
+    hasWebhookUrl: Boolean(process.env.LEAD_WEBHOOK_URL),
+    nodeEnv: process.env.NODE_ENV,
+  });
+
   try {
     const body = await request.json();
     const { name, email, phone, patrimonio, message, goal, contactPreference } = body;
@@ -96,6 +116,11 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     } satisfies LeadPayload;
 
+    const hasConfiguredDeliveryChannel = Boolean(
+      process.env.LEAD_WEBHOOK_URL ||
+        (process.env.RESEND_API_KEY && process.env.LEAD_NOTIFICATION_EMAIL)
+    );
+
     const results = await Promise.allSettled([
       sendLeadToWebhook(lead),
       sendLeadWithResend(lead),
@@ -106,9 +131,16 @@ export async function POST(request: Request) {
     );
 
     if (!delivered) {
-      console.log("Lead recebido sem canal configurado:", lead);
+      const rejectedReasons = results
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+        .map((result) => String(result.reason));
 
-      if (process.env.NODE_ENV === "production") {
+      console.error("Falha na entrega do lead:", {
+        lead,
+        rejectedReasons,
+      });
+
+      if (!hasConfiguredDeliveryChannel && process.env.NODE_ENV === "production") {
         return NextResponse.json(
           {
             error:
@@ -117,6 +149,28 @@ export async function POST(request: Request) {
           { status: 503 }
         );
       }
+
+      const resendTestingRestriction = rejectedReasons.some((reason) =>
+        reason.includes("You can only send testing emails to your own email address")
+      );
+
+      if (resendTestingRestriction) {
+        return NextResponse.json(
+          {
+            error:
+              "O formulário está pronto, mas o envio por e-mail depende da validação final do domínio na Resend. Enquanto essa etapa é concluída, o contato imediato pode ser feito pelo WhatsApp.",
+          },
+          { status: 503 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            "No momento, não foi possível concluir o envio do formulário. Por favor, tente novamente em instantes ou utilize o WhatsApp.",
+        },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({ success: true });

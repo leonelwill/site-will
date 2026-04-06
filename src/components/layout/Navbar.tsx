@@ -82,7 +82,7 @@ export function Navbar() {
               href="#contato"
               className="inline-flex items-center justify-center rounded-full bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-dark hover:shadow-lg hover:shadow-brand-primary/15"
             >
-              Fale Comigo
+              Solicitar contato
             </a>
           </div>
 
@@ -117,7 +117,7 @@ export function Navbar() {
                 onClick={() => setIsOpen(false)}
                 className="block w-full rounded-full bg-brand-primary px-5 py-3 text-center text-sm font-semibold text-white"
               >
-                Fale Comigo
+                Solicitar contato
               </a>
             </div>
           </div>

@@ -31,7 +31,7 @@ const authorityCards = [
     icon: Landmark,
     title: "Ecossistema BTG Pactual",
     description:
-      "Atendimento com acesso à plataforma, produtos e solidez do maior banco de investimentos da América Latina.",
+      "Atendimento apoiado pela plataforma, pela solidez institucional e pelo ecossistema do maior banco de investimentos da América Latina.",
   },
   {
     icon: ShieldCheck,
@@ -44,15 +44,15 @@ const authorityCards = [
 const steps = [
   {
     icon: ClipboardCheck,
-    title: "1. Diagnóstico rápido",
+    title: "1. Avaliação inicial",
     description:
       "Entendemos objetivos, momento de vida, estrutura patrimonial e horizonte de investimento.",
   },
   {
     icon: BriefcaseBusiness,
-    title: "2. Direcionamento inicial",
+    title: "2. Direcionamento estratégico",
     description:
-      "Você recebe um plano de próximos passos para carteira, proteção patrimonial e oportunidades prioritárias.",
+      "Você recebe uma orientação inicial sobre alocação, proteção patrimonial e prioridades de curto, médio e longo prazo.",
   },
   {
     icon: ShieldCheck,
@@ -69,8 +69,8 @@ export function AuthoritySection() {
         <AnimateOnScroll>
           <SectionHeading
             eyebrow="Estrutura e Credibilidade"
-            title="Os sinais de confiança precisam aparecer cedo, com clareza e sem exagero"
-            description="Para quem chega pelas redes sociais, autoridade nao vem de promessas vagas. Vem de números, estrutura institucional e um processo de atendimento bem definido."
+            title="Confiança se constrói com solidez institucional, clareza e consistência"
+            description="Para quem chega pelas redes sociais, credibilidade se estabelece por meio de estrutura, histórico e um processo de atendimento bem definido."
           />
         </AnimateOnScroll>
 
@@ -115,7 +115,7 @@ export function AuthoritySection() {
                 Como funciona
               </p>
               <h3 className="mt-4 text-3xl font-bold leading-tight">
-                Um processo simples para sair da intenção e chegar em uma direção prática
+                Um processo estruturado para transformar objetivos em decisões bem fundamentadas
               </h3>
               <div className="mt-8 space-y-5">
                 {steps.map((step) => (
@@ -142,7 +142,7 @@ export function AuthoritySection() {
                 href="#contato"
                 className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-brand-accent transition-colors hover:text-white"
               >
-                Solicitar contato agora
+                Solicitar contato
                 <ArrowRight size={16} />
               </a>
             </div>

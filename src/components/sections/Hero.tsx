@@ -40,13 +40,14 @@ export function Hero() {
               Seu patrimônio com{" "}
               <span className="text-brand-primary">direção clara</span>.
               <br />
-              Sem ruído, sem produto empurrado.
+              Com estratégia, acompanhamento e visão de longo prazo.
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              Assessoria patrimonial para quem busca clareza estratégica, acompanhamento próximo
-              e a estrutura da <strong className="text-brand-dark">Ethimos Investimentos</strong>{" "}
-              com o ecossistema do <strong className="text-brand-dark">BTG Pactual</strong>.
+              Assessoria patrimonial voltada a investidores que valorizam clareza estratégica,
+              acompanhamento qualificado e a estrutura da{" "}
+              <strong className="text-brand-dark">Ethimos Investimentos</strong> com o
+              ecossistema do <strong className="text-brand-dark">BTG Pactual</strong>.
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
@@ -57,13 +58,13 @@ export function Hero() {
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-8 py-4 text-base font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-black/10"
               >
                 <MessageCircle size={18} />
-                Falar no WhatsApp
+                Contato via WhatsApp
               </a>
               <a
                 href="#contato"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-primary/15 bg-white/85 px-8 py-4 text-base font-semibold text-brand-primary transition-all hover:scale-[1.02] hover:border-brand-primary/30 hover:bg-white"
               >
-                Solicitar diagnóstico inicial
+                Solicitar avaliação inicial
                 <ArrowRight size={18} />
               </a>
             </div>
@@ -107,18 +108,18 @@ export function Hero() {
                   Patrimônio com direção
                 </p>
                 <h2 className="mt-5 text-3xl font-bold leading-tight text-brand-dark">
-                  Diagnóstico, estratégia e acompanhamento sem complexidade desnecessária.
+                  Avaliação, estratégia e acompanhamento com clareza e consistência.
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-                  Um atendimento pensado para quem quer tomar decisões com mais segurança,
-                  entender prioridades e organizar o patrimônio com visão de longo prazo.
+                  Um atendimento estruturado para quem deseja tomar decisões com segurança,
+                  definir prioridades patrimoniais e avançar com visão de longo prazo.
                 </p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-brand-primary/10 bg-muted/70 p-5">
                     <p className="text-sm font-semibold text-brand-dark">Atendimento direto</p>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      Conversa objetiva, contato rápido e acompanhamento próximo ao longo do processo.
+                      Relacionamento próximo, comunicação objetiva e acompanhamento contínuo ao longo do processo.
                     </p>
                   </div>
                   <div className="rounded-2xl border border-brand-primary/10 bg-muted/70 p-5">

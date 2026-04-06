@@ -53,6 +53,7 @@ export function ContactCTA() {
   const initialGoal = goals.includes(goalFromQuery ?? "") ? goalFromQuery! : goals[0];
 
   const [formState, setFormState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
     email: "",
@@ -66,6 +67,7 @@ export function ContactCTA() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormState("loading");
+    setErrorMessage("");
 
     try {
       const res = await fetch("/api/lead", {
@@ -76,6 +78,7 @@ export function ContactCTA() {
 
       if (res.ok) {
         setFormState("success");
+        setErrorMessage("");
         setFormData({
           name: "",
           email: "",
@@ -86,9 +89,17 @@ export function ContactCTA() {
           message: "",
         });
       } else {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setErrorMessage(
+          data?.error ||
+            "No momento, não foi possível concluir o envio. Por favor, tente novamente em instantes."
+        );
         setFormState("error");
       }
     } catch {
+      setErrorMessage(
+        "No momento, não foi possível concluir o envio. Por favor, tente novamente em instantes."
+      );
       setFormState("error");
     }
   };
@@ -117,22 +128,22 @@ export function ContactCTA() {
                 Solicite seu contato
               </p>
               <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-                Vamos falar sobre seu patrimônio com uma conversa{" "}
-                <span className="text-brand-accent">simples e estratégica</span>
+                Vamos tratar do seu patrimônio com uma conversa{" "}
+                <span className="text-brand-accent">reservada e estratégica</span>
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-white/65">
-                O primeiro contato precisa ser rápido, objetivo e útil. Você deixa o essencial e
-                o restante só detalha se fizer sentido.
+                Você informa os dados essenciais e o retorno é realizado com a devida atenção,
+                de acordo com o seu objetivo principal e o canal de contato preferido.
               </p>
 
               <div className="mt-10 grid gap-4 sm:grid-cols-2">
                 <div className={`${siteTheme.dark.panelClass} rounded-2xl p-5`}>
                   <div className="flex items-center gap-3 text-white">
                     <Clock3 size={20} className="shrink-0 text-brand-accent" />
-                    <span className="font-semibold">Retorno rápido</span>
+                    <span className="font-semibold">Retorno diligente</span>
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-white/70">
-                    Priorização para responder em até 1 dia útil com os próximos passos.
+                    Priorização para retorno em até 1 dia útil com os próximos encaminhamentos.
                   </p>
                 </div>
                 <div className={`${siteTheme.dark.panelClass} rounded-2xl p-5`}>
@@ -149,15 +160,15 @@ export function ContactCTA() {
               <div className="mt-10 space-y-4">
                 <div className="flex items-center gap-3 text-white/72">
                   <CheckCircle size={20} className="shrink-0 text-brand-accent" />
-                  <span>Primeira conversa estratégica, objetiva e sem compromisso</span>
+                  <span>Primeiro contato orientado ao alinhamento patrimonial e aos próximos passos</span>
                 </div>
                 <div className="flex items-center gap-3 text-white/72">
                   <CheckCircle size={20} className="shrink-0 text-brand-accent" />
-                  <span>Indicado para quem busca clareza sobre patrimônio, renda e longo prazo</span>
+                  <span>Indicado para quem busca organização patrimonial, visão de longo prazo e acompanhamento qualificado</span>
                 </div>
                 <div className="flex items-center gap-3 text-white/72">
                   <CheckCircle size={20} className="shrink-0 text-brand-accent" />
-                  <span>Se preferir, você também pode iniciar agora pelo WhatsApp</span>
+                  <span>Se preferir, o contato também pode ser iniciado imediatamente pelo WhatsApp</span>
                 </div>
               </div>
 
@@ -168,7 +179,7 @@ export function ContactCTA() {
                 className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-dark transition-all hover:bg-brand-accent hover:text-brand-dark"
               >
                 <MessageCircle size={18} />
-                Falar no WhatsApp
+                Contato via WhatsApp
               </a>
             </div>
           </AnimateOnScroll>
@@ -189,17 +200,17 @@ export function ContactCTA() {
                     onClick={() => setFormState("idle")}
                     className="mt-6 text-sm font-semibold text-brand-primary hover:text-brand-dark transition-colors"
                   >
-                    Solicitar novo contato
+                    Enviar nova solicitação
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="rounded-2xl border border-brand-primary/10 bg-muted/70 p-4">
                     <p className="text-sm font-semibold text-brand-dark">
-                      Preenchimento rápido
+                      Informações iniciais
                     </p>
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      Você deixa seus dados e eu retorno com um primeiro contato orientado ao seu objetivo principal.
+                      Após o envio, o retorno será realizado com base no seu objetivo principal e no canal selecionado.
                     </p>
                   </div>
 
@@ -254,7 +265,7 @@ export function ContactCTA() {
 
                   <details className="group rounded-2xl border border-brand-primary/10 bg-muted/45 px-4 py-4">
                     <summary className="cursor-pointer list-none text-sm font-semibold text-brand-primary">
-                      Quer detalhar melhor seu caso? <span className="text-muted-foreground">(opcional)</span>
+                      Deseja detalhar seu contexto? <span className="text-muted-foreground">(opcional)</span>
                     </summary>
 
                     <div className="mt-5 space-y-5">
@@ -345,9 +356,9 @@ export function ContactCTA() {
                   </details>
 
                   {formState === "error" && (
-                    <p className="text-sm text-red-500">
-                      Erro ao enviar. Tente novamente ou fale diretamente pelo WhatsApp.
-                    </p>
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                      {errorMessage}
+                    </div>
                   )}
 
                   <button
@@ -376,7 +387,7 @@ export function ContactCTA() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 font-semibold text-brand-primary transition-colors hover:text-brand-dark"
                     >
-                      Prefiro WhatsApp
+                      Optar por WhatsApp
                       <ArrowRight size={14} />
                     </a>
                   </div>

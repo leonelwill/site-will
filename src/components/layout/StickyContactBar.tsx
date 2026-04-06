@@ -31,7 +31,7 @@ export function StickyContactBar() {
           className="inline-flex items-center gap-3 rounded-full bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-black/15 transition-transform hover:-translate-y-0.5"
         >
           <MessageCircle size={18} />
-          Falar no WhatsApp
+          Contato via WhatsApp
         </a>
         <a
           href="#contato"
@@ -61,7 +61,7 @@ export function StickyContactBar() {
             className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-sm font-semibold text-white"
           >
             <MessageCircle size={18} />
-            WhatsApp
+            Contato via WhatsApp
           </a>
           <a
             href="#contato"

@@ -40,17 +40,17 @@ export function AboutMe() {
                 Sobre o atendimento
               </p>
               <blockquote className="mt-6 text-3xl font-bold leading-tight sm:text-4xl">
-                “Minha assessoria começa ouvindo, não vendendo.”
+                “Minha assessoria começa com escuta qualificada e compreensão do contexto patrimonial.”
               </blockquote>
               <p className="mt-6 text-base leading-relaxed text-white/72">
-                O objetivo é entender momento, prioridades e riscos antes de falar de produto.
-                A conversa precisa gerar clareza, não confusão.
+                O objetivo é compreender momento, prioridades e riscos antes de avançar para qualquer recomendação.
+                A conversa deve oferecer clareza, método e segurança na tomada de decisão.
               </p>
 
               <div className={`${siteTheme.dark.panelClass} mt-8 rounded-2xl p-5`}>
                 <p className="text-sm leading-relaxed text-white/72">
-                  Para quem chega pelas redes sociais, o primeiro contato precisa ser simples,
-                  humano e útil desde o início.
+                  Para quem chega pelas redes sociais, o primeiro contato deve ser claro,
+                  respeitoso e orientado ao que realmente importa.
                 </p>
               </div>
 
@@ -61,7 +61,7 @@ export function AboutMe() {
                 className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-dark transition-all hover:scale-[1.02] hover:bg-brand-accent"
               >
                 <MessageCircle size={18} />
-                Falar no WhatsApp
+                Contato via WhatsApp
               </a>
             </div>
           </AnimateOnScroll>
@@ -100,7 +100,7 @@ export function AboutMe() {
                 href="#contato"
                 className="inline-flex items-center gap-2 text-brand-primary font-semibold transition-colors hover:text-brand-dark"
               >
-                Solicitar conversa estratégica
+                Solicitar avaliação inicial
                 <ArrowRight size={16} />
               </a>
               <p className="text-sm text-muted-foreground">
