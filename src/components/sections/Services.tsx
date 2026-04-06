@@ -18,19 +18,22 @@ const featuredServices = [
   {
     icon: LineChart,
     title: "Assessoria de Investimentos",
-    description: "Análise personalizada do seu perfil e objetivos para construir uma carteira diversificada e alinhada às suas metas.",
+    description:
+      "Se você já investe ou quer começar melhor, eu ajudo a organizar a carteira, ajustar rota e entender o que faz sentido para o seu momento.",
     goal: "Organizar carteira atual",
   },
   {
     icon: Landmark,
     title: "Planejamento Financeiro",
-    description: "Estruturação completa do seu patrimônio com visão de longo prazo, controle de gastos e metas financeiras.",
+    description:
+      "Aqui a conversa vai além do produto: olhamos patrimônio, objetivos, reserva, aposentadoria e o que precisa ser priorizado primeiro.",
     goal: "Planejar aposentadoria",
   },
   {
     icon: HeartHandshake,
     title: "Planejamento Sucessório",
-    description: "Estruturação patrimonial para proteção e transmissão eficiente do patrimônio às próximas gerações.",
+    description:
+      "Para quem quer proteger a família e organizar melhor a transmissão do patrimônio, eu ajudo a transformar um tema delicado em plano concreto.",
     goal: "Estruturar patrimônio familiar",
   },
 ];
@@ -65,8 +68,8 @@ export function Services() {
         <AnimateOnScroll>
           <SectionHeading
             eyebrow="Serviços"
-            title="As frentes centrais do atendimento precisam ficar claras logo cedo"
-            description="Em vez de apresentar tudo com o mesmo peso, o site destaca as frentes mais estratégicas e deixa o restante como apoio complementar."
+            title="Esses são os assuntos que mais aparecem nas conversas que eu conduzo"
+            description="Cada frente atende um momento diferente, mas todas partem da mesma base: entender seu contexto antes de decidir qualquer movimento."
           />
         </AnimateOnScroll>
 

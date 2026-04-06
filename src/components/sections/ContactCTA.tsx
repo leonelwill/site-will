@@ -125,15 +125,16 @@ export function ContactCTA() {
                 className="mb-6 h-10 w-auto"
               />
               <p className="mb-4 text-sm font-semibold uppercase tracking-widest text-brand-accent">
-                Solicite seu contato
+                Vamos conversar
               </p>
               <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-                Vamos tratar do seu patrimônio com uma conversa{" "}
-                <span className="text-brand-accent">reservada e estratégica</span>
+                Se fizer sentido para você, me conte seu momento e eu{" "}
+                <span className="text-brand-accent">entro em contato</span>
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-white/65">
-                Você informa os dados essenciais e o retorno é realizado com a devida atenção,
-                de acordo com o seu objetivo principal e o canal de contato preferido.
+                Pode ser para revisar a carteira, organizar o patrimônio, pensar em aposentadoria
+                ou simplesmente entender por onde começar. Você me passa o básico e eu retorno
+                pelo canal que preferir.
               </p>
 
               <div className="mt-10 grid gap-4 sm:grid-cols-2">
@@ -143,7 +144,7 @@ export function ContactCTA() {
                     <span className="font-semibold">Retorno diligente</span>
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-white/70">
-                    Priorização para retorno em até 1 dia útil com os próximos encaminhamentos.
+                    Leio cada contato com cuidado e priorizo resposta em até 1 dia útil.
                   </p>
                 </div>
                 <div className={`${siteTheme.dark.panelClass} rounded-2xl p-5`}>
@@ -152,7 +153,7 @@ export function ContactCTA() {
                     <span className="font-semibold">Contato seguro</span>
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-white/70">
-                    Informações tratadas com sigilo e em ambiente profissional.
+                    Suas informações ficam em ambiente profissional, com a descrição e o sigilo que o tema pede.
                   </p>
                 </div>
               </div>
@@ -160,15 +161,15 @@ export function ContactCTA() {
               <div className="mt-10 space-y-4">
                 <div className="flex items-center gap-3 text-white/72">
                   <CheckCircle size={20} className="shrink-0 text-brand-accent" />
-                  <span>Primeiro contato orientado ao alinhamento patrimonial e aos próximos passos</span>
+                  <span>O primeiro contato serve para eu entender seu momento e os próximos passos mais urgentes</span>
                 </div>
                 <div className="flex items-center gap-3 text-white/72">
                   <CheckCircle size={20} className="shrink-0 text-brand-accent" />
-                  <span>Indicado para quem busca organização patrimonial, visão de longo prazo e acompanhamento qualificado</span>
+                  <span>Faz sentido para quem quer organizar patrimônio, revisar carteira ou ganhar mais clareza para decidir</span>
                 </div>
                 <div className="flex items-center gap-3 text-white/72">
                   <CheckCircle size={20} className="shrink-0 text-brand-accent" />
-                  <span>Se preferir, o contato também pode ser iniciado imediatamente pelo WhatsApp</span>
+                  <span>Se preferir agilizar, você também pode me chamar direto no WhatsApp</span>
                 </div>
               </div>
 
@@ -179,7 +180,7 @@ export function ContactCTA() {
                 className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-dark transition-all hover:bg-brand-accent hover:text-brand-dark"
               >
                 <MessageCircle size={18} />
-                Contato via WhatsApp
+                Falar comigo no WhatsApp
               </a>
             </div>
           </AnimateOnScroll>

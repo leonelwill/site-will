@@ -37,17 +37,19 @@ export function Hero() {
             </p>
 
             <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-brand-dark sm:text-5xl lg:text-6xl">
-              Seu patrimônio com{" "}
-              <span className="text-brand-primary">direção clara</span>.
+              William Leonel.
               <br />
-              Com estratégia, acompanhamento e visão de longo prazo.
+              <span className="text-brand-primary">
+                Assessoria para organizar seu patrimônio de verdade.
+              </span>
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              Assessoria patrimonial voltada a investidores que valorizam clareza estratégica,
-              acompanhamento qualificado e a estrutura da{" "}
-              <strong className="text-brand-dark">Ethimos Investimentos</strong> com o
-              ecossistema do <strong className="text-brand-dark">BTG Pactual</strong>.
+              Sou assessor de investimentos na{" "}
+              <strong className="text-brand-dark">Ethimos Investimentos</strong>, ligada ao{" "}
+              <strong className="text-brand-dark">BTG Pactual</strong>, com base em Sorocaba.
+              Meu trabalho é ajudar quem já acumulou patrimônio ou quer estruturar melhor a
+              vida financeira a tomar decisões com mais critério, contexto e acompanhamento.
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
@@ -105,27 +107,27 @@ export function Hero() {
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-primary via-brand-accent to-brand-gold" />
 
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-primary/65">
-                  Patrimônio com direção
+                  Primeiro passo
                 </p>
                 <h2 className="mt-5 text-3xl font-bold leading-tight text-brand-dark">
-                  Avaliação, estratégia e acompanhamento com clareza e consistência.
+                  Se fizer sentido para você, a conversa começa simples.
                 </h2>
                 <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-                  Um atendimento estruturado para quem deseja tomar decisões com segurança,
-                  definir prioridades patrimoniais e avançar com visão de longo prazo.
+                  Entendo onde você está hoje, o que já faz com seu dinheiro e quais decisões
+                  precisam de mais atenção agora.
                 </p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-brand-primary/10 bg-muted/70 p-5">
-                    <p className="text-sm font-semibold text-brand-dark">Atendimento direto</p>
+                    <p className="text-sm font-semibold text-brand-dark">Conversa direto comigo</p>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      Relacionamento próximo, comunicação objetiva e acompanhamento contínuo ao longo do processo.
+                      Sem fila, sem linguagem enrolada e sem empurrar produto antes de entender seu caso.
                     </p>
                   </div>
                   <div className="rounded-2xl border border-brand-primary/10 bg-muted/70 p-5">
                     <p className="text-sm font-semibold text-brand-dark">Estrutura forte por trás</p>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      Ethimos Investimentos e o ecossistema BTG Pactual como base institucional.
+                      A relação é pessoal, mas com a base da Ethimos e o ecossistema do BTG por trás.
                     </p>
                   </div>
                 </div>

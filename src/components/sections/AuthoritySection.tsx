@@ -23,42 +23,42 @@ const stats = [
 const authorityCards = [
   {
     icon: Crown,
-    title: "Ethimos em destaque nacional",
+    title: "Ethimos com resultado que chama atenção",
     description:
-      "Reconhecimento recente no Ranking BTG Pactual e uma trajetória consistente de crescimento e excelência.",
+      "Não é só discurso institucional: a Ethimos vem sendo reconhecida nacionalmente e hoje é referência dentro do ecossistema BTG.",
   },
   {
     icon: Landmark,
-    title: "Ecossistema BTG Pactual",
+    title: "BTG Pactual como plataforma",
     description:
-      "Atendimento apoiado pela plataforma, pela solidez institucional e pelo ecossistema do maior banco de investimentos da América Latina.",
+      "No dia a dia, consigo atender com a proximidade de um assessor e a estrutura do maior banco de investimentos da América Latina.",
   },
   {
     icon: ShieldCheck,
-    title: "Ambiente regulado e seguro",
+    title: "Relação profissional e regulada",
     description:
-      "Operação vinculada a escritório devidamente registrado na CVM e na ANCORD, com atuação profissional e transparente.",
+      "Seu patrimônio é tratado dentro de um ambiente regulado, com processo sério, transparência e responsabilidade.",
   },
 ];
 
 const steps = [
   {
     icon: ClipboardCheck,
-    title: "1. Avaliação inicial",
+    title: "1. Eu entendo seu momento",
     description:
-      "Entendemos objetivos, momento de vida, estrutura patrimonial e horizonte de investimento.",
+      "A conversa começa entendendo objetivos, carteira atual, momento de vida e o que hoje está tirando sua paz.",
   },
   {
     icon: BriefcaseBusiness,
-    title: "2. Direcionamento estratégico",
+    title: "2. Eu mostro os caminhos",
     description:
-      "Você recebe uma orientação inicial sobre alocação, proteção patrimonial e prioridades de curto, médio e longo prazo.",
+      "Depois disso, eu organizo prioridades e explico com clareza o que faz sentido olhar primeiro.",
   },
   {
     icon: ShieldCheck,
-    title: "3. Acompanhamento próximo",
+    title: "3. Eu acompanho a execução",
     description:
-      "A relação continua com revisões, ajustes de estratégia e suporte ao longo do tempo.",
+      "Se avançarmos, o trabalho continua com revisões, ajustes e proximidade no acompanhamento.",
   },
 ];
 
@@ -69,8 +69,8 @@ export function AuthoritySection() {
         <AnimateOnScroll>
           <SectionHeading
             eyebrow="Estrutura e Credibilidade"
-            title="Confiança se constrói com solidez institucional, clareza e consistência"
-            description="Para quem chega pelas redes sociais, credibilidade se estabelece por meio de estrutura, histórico e um processo de atendimento bem definido."
+            title="Boa assessoria precisa de relação direta e estrutura forte por trás"
+            description="Eu valorizo o atendimento próximo, mas isso fica muito mais sólido quando existe um escritório forte, uma boa plataforma e um processo claro de trabalho."
           />
         </AnimateOnScroll>
 
@@ -115,7 +115,7 @@ export function AuthoritySection() {
                 Como funciona
               </p>
               <h3 className="mt-4 text-3xl font-bold leading-tight">
-                Um processo estruturado para transformar objetivos em decisões bem fundamentadas
+                Um jeito simples de transformar uma conversa inicial em decisão bem orientada
               </h3>
               <div className="mt-8 space-y-5">
                 {steps.map((step) => (
@@ -142,7 +142,7 @@ export function AuthoritySection() {
                 href="#contato"
                 className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-brand-accent transition-colors hover:text-white"
               >
-                Solicitar contato
+                Falar comigo
                 <ArrowRight size={16} />
               </a>
             </div>
