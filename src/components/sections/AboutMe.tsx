@@ -57,20 +57,34 @@ export function AboutMe() {
               </p>
 
               <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-center">
-                <div className="mx-auto md:mx-0">
+                <div className="mx-auto flex flex-col gap-4 md:mx-0">
                   {showPortrait ? (
-                    <div className="relative h-36 w-36 overflow-hidden rounded-[2rem] border border-white/12 bg-brand-accent/10 sm:h-40 sm:w-40 lg:h-48 lg:w-48">
-                      <Image
-                        src="/images/william-about.jpg"
-                        alt="William Leonel"
-                        fill
-                        sizes="(min-width: 1024px) 192px, (min-width: 640px) 160px, 144px"
-                        className="object-cover"
-                        priority={false}
-                        loading="lazy"
-                        onError={() => setShowPortrait(false)}
-                      />
-                    </div>
+                    <>
+                      <div className="relative h-36 w-36 overflow-hidden rounded-[2rem] border border-white/12 bg-brand-accent/10 sm:h-40 sm:w-40 lg:h-48 lg:w-48">
+                        <Image
+                          src="/images/william-about2.jpg"
+                          alt="William Leonel"
+                          fill
+                          sizes="(min-width: 1024px) 192px, (min-width: 640px) 160px, 144px"
+                          className="object-cover"
+                          priority={false}
+                          loading="lazy"
+                          onError={() => setShowPortrait(false)}
+                        />
+                      </div>
+                      <div className="relative h-36 w-36 overflow-hidden rounded-[2rem] border border-white/12 bg-brand-accent/10 sm:h-40 sm:w-40 lg:h-48 lg:w-48">
+                        <Image
+                          src="/images/william-about.jpg"
+                          alt="William Leonel sorrindo"
+                          fill
+                          sizes="(min-width: 1024px) 192px, (min-width: 640px) 160px, 144px"
+                          className="object-cover"
+                          priority={false}
+                          loading="lazy"
+                          onError={() => setShowPortrait(false)}
+                        />
+                      </div>
+                    </>
                   ) : (
                     <div className="flex h-36 w-36 items-center justify-center rounded-full border border-white/12 bg-brand-accent/20 text-3xl font-semibold text-white sm:h-40 sm:w-40 lg:h-48 lg:w-48">
                       WL
