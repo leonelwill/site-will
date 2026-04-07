@@ -35,20 +35,28 @@ export function TurnstileWidget({
 }: TurnstileWidgetProps) {
   const containerId = useId().replace(/:/g, "");
   const widgetIdRef = useRef<string | null>(null);
+  const onTokenChangeRef = useRef(onTokenChange);
+  const onStatusChangeRef = useRef(onStatusChange);
   const [scriptReady, setScriptReady] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
   const [widgetError, setWidgetError] = useState<string | null>(null);
 
+  // Keep refs in sync on every render without triggering the widget effect
+  useEffect(() => {
+    onTokenChangeRef.current = onTokenChange;
+    onStatusChangeRef.current = onStatusChange;
+  });
+
   useEffect(() => {
     if (!siteKey) {
-      onTokenChange("");
-      onStatusChange?.("idle");
+      onTokenChangeRef.current("");
+      onStatusChangeRef.current?.("idle");
       return;
     }
 
     if (!scriptReady || !window.turnstile) return;
 
-    onStatusChange?.("verifying");
+    onStatusChangeRef.current?.("verifying");
 
     widgetIdRef.current = window.turnstile.render(`#${containerId}`, {
       sitekey: siteKey,
@@ -57,21 +65,21 @@ export function TurnstileWidget({
       callback: (token) => {
         setIsVerifying(false);
         setWidgetError(null);
-        onStatusChange?.("verified");
-        onTokenChange(token);
+        onStatusChangeRef.current?.("verified");
+        onTokenChangeRef.current(token);
       },
       "error-callback": () => {
         setIsVerifying(false);
-        onTokenChange("");
-        onStatusChange?.("error");
+        onTokenChangeRef.current("");
+        onStatusChangeRef.current?.("error");
         setWidgetError(
           "A proteção anti-spam não conseguiu concluir a verificação. Recarregue a página e, se continuar, confira o domínio configurado no Turnstile."
         );
       },
       "expired-callback": () => {
         setIsVerifying(false);
-        onTokenChange("");
-        onStatusChange?.("error");
+        onTokenChangeRef.current("");
+        onStatusChangeRef.current?.("error");
         setWidgetError("A verificação expirou. Confirme novamente para enviar.");
       },
     });
@@ -80,8 +88,8 @@ export function TurnstileWidget({
       setIsVerifying((current) => {
         if (!current) return current;
 
-        onTokenChange("");
-        onStatusChange?.("error");
+        onTokenChangeRef.current("");
+        onStatusChangeRef.current?.("error");
         setWidgetError(
           "A verificação está demorando mais do que o normal. Se estiver em produção, confira os hostnames do widget no Cloudflare Turnstile."
         );
@@ -96,7 +104,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [containerId, onStatusChange, onTokenChange, scriptReady, siteKey]);
+  }, [containerId, scriptReady, siteKey]);
 
   if (!siteKey) return null;
 

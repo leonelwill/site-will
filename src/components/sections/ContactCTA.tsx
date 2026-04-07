@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AnimateOnScroll } from "@/components/ui/AnimateOnScroll";
@@ -85,6 +85,10 @@ export function ContactCTA() {
     website: "",
     turnstileToken: "",
   });
+
+  const handleTurnstileToken = useCallback((turnstileToken: string) => {
+    setFormData((current) => ({ ...current, turnstileToken }));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,9 +431,7 @@ export function ContactCTA() {
                       key={turnstileRenderKey}
                       siteKey={turnstileSiteKey}
                       onStatusChange={setTurnstileStatus}
-                      onTokenChange={(turnstileToken) =>
-                        setFormData((current) => ({ ...current, turnstileToken }))
-                      }
+                      onTokenChange={handleTurnstileToken}
                     />
                   ) : null}
 
