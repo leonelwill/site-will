@@ -50,6 +50,18 @@ interface ContactFormData {
   turnstileToken: string;
 }
 
+function formatPhoneInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length <= 2) return digits ? `(${digits}` : "";
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 export function ContactCTA() {
   const searchParams = useSearchParams();
   const goalFromQuery = searchParams.get("goal");
@@ -59,6 +71,9 @@ export function ContactCTA() {
   const [formState, setFormState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [turnstileRenderKey, setTurnstileRenderKey] = useState(0);
+  const [turnstileStatus, setTurnstileStatus] = useState<"idle" | "verifying" | "verified" | "error">(
+    turnstileSiteKey ? "verifying" : "idle"
+  );
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
     email: "",
@@ -74,8 +89,18 @@ export function ContactCTA() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (turnstileSiteKey && turnstileStatus === "verifying") {
+      setErrorMessage("A proteção anti-spam ainda está verificando. Aguarde alguns segundos antes de enviar.");
+      setFormState("error");
+      return;
+    }
+
     if (turnstileSiteKey && !formData.turnstileToken) {
-      setErrorMessage("Confirme a verificação anti-spam antes de enviar.");
+      setErrorMessage(
+        turnstileStatus === "error"
+          ? "A verificação anti-spam não foi concluída. Recarregue a página ou confira a configuração do Turnstile."
+          : "Confirme a verificação anti-spam antes de enviar."
+      );
       setFormState("error");
       return;
     }
@@ -104,6 +129,7 @@ export function ContactCTA() {
           website: "",
           turnstileToken: "",
         });
+        setTurnstileStatus(turnstileSiteKey ? "verifying" : "idle");
         setTurnstileRenderKey((current) => current + 1);
       } else {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -112,6 +138,7 @@ export function ContactCTA() {
             "No momento, não foi possível concluir o envio. Por favor, tente novamente em instantes."
         );
         setFormData((current) => ({ ...current, turnstileToken: "" }));
+        setTurnstileStatus(turnstileSiteKey ? "verifying" : "idle");
         setTurnstileRenderKey((current) => current + 1);
         setFormState("error");
       }
@@ -120,6 +147,7 @@ export function ContactCTA() {
         "No momento, não foi possível concluir o envio. Por favor, tente novamente em instantes."
       );
       setFormData((current) => ({ ...current, turnstileToken: "" }));
+      setTurnstileStatus(turnstileSiteKey ? "verifying" : "idle");
       setTurnstileRenderKey((current) => current + 1);
       setFormState("error");
     }
@@ -275,9 +303,11 @@ export function ContactCTA() {
                       type="tel"
                       required
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: formatPhoneInput(e.target.value) })
+                      }
                       className="w-full rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-brand-dark placeholder:text-muted-foreground focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all"
-                      placeholder={contactInfo.phoneDisplay}
+                      placeholder="(11) 91234-5678"
                     />
                   </div>
 
@@ -396,6 +426,7 @@ export function ContactCTA() {
                     <TurnstileWidget
                       key={turnstileRenderKey}
                       siteKey={turnstileSiteKey}
+                      onStatusChange={setTurnstileStatus}
                       onTokenChange={(turnstileToken) =>
                         setFormData((current) => ({ ...current, turnstileToken }))
                       }
@@ -411,7 +442,9 @@ export function ContactCTA() {
                   <button
                     type="submit"
                     disabled={
-                      formState === "loading" || (Boolean(turnstileSiteKey) && !formData.turnstileToken)
+                      formState === "loading" ||
+                      (Boolean(turnstileSiteKey) &&
+                        (turnstileStatus !== "verified" || !formData.turnstileToken))
                     }
                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-primary px-8 py-4 text-base font-semibold text-white transition-all hover:bg-brand-dark hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
                   >

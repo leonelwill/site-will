@@ -25,11 +25,13 @@ declare global {
 interface TurnstileWidgetProps {
   siteKey?: string;
   onTokenChange: (token: string) => void;
+  onStatusChange?: (status: "idle" | "verifying" | "verified" | "error") => void;
 }
 
 export function TurnstileWidget({
   siteKey,
   onTokenChange,
+  onStatusChange,
 }: TurnstileWidgetProps) {
   const containerId = useId().replace(/:/g, "");
   const widgetIdRef = useRef<string | null>(null);
@@ -40,10 +42,13 @@ export function TurnstileWidget({
   useEffect(() => {
     if (!siteKey) {
       onTokenChange("");
+      onStatusChange?.("idle");
       return;
     }
 
     if (!scriptReady || !window.turnstile) return;
+
+    onStatusChange?.("verifying");
 
     widgetIdRef.current = window.turnstile.render(`#${containerId}`, {
       sitekey: siteKey,
@@ -52,11 +57,13 @@ export function TurnstileWidget({
       callback: (token) => {
         setIsVerifying(false);
         setWidgetError(null);
+        onStatusChange?.("verified");
         onTokenChange(token);
       },
       "error-callback": () => {
         setIsVerifying(false);
         onTokenChange("");
+        onStatusChange?.("error");
         setWidgetError(
           "A proteção anti-spam não conseguiu concluir a verificação. Recarregue a página e, se continuar, confira o domínio configurado no Turnstile."
         );
@@ -64,6 +71,7 @@ export function TurnstileWidget({
       "expired-callback": () => {
         setIsVerifying(false);
         onTokenChange("");
+        onStatusChange?.("error");
         setWidgetError("A verificação expirou. Confirme novamente para enviar.");
       },
     });
@@ -73,6 +81,7 @@ export function TurnstileWidget({
         if (!current) return current;
 
         onTokenChange("");
+        onStatusChange?.("error");
         setWidgetError(
           "A verificação está demorando mais do que o normal. Se estiver em produção, confira os hostnames do widget no Cloudflare Turnstile."
         );
@@ -87,7 +96,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [containerId, onTokenChange, scriptReady, siteKey]);
+  }, [containerId, onStatusChange, onTokenChange, scriptReady, siteKey]);
 
   if (!siteKey) return null;
 
@@ -100,10 +109,12 @@ export function TurnstileWidget({
           setScriptReady(true);
           setIsVerifying(true);
           setWidgetError(null);
+          onStatusChange?.("verifying");
         }}
         onError={() => {
           setIsVerifying(false);
           onTokenChange("");
+          onStatusChange?.("error");
           setWidgetError(
             "Não foi possível carregar a proteção anti-spam. Verifique conexão, bloqueadores de script ou a configuração do widget."
           );
@@ -114,7 +125,7 @@ export function TurnstileWidget({
         <p className="text-sm text-red-600">{widgetError}</p>
       ) : isVerifying ? (
         <p className="text-xs text-muted-foreground">
-          Verificando proteção anti-spam...
+          Verificando proteção anti-spam. Aguarde alguns segundos antes de enviar.
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">
