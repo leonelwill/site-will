@@ -62,7 +62,7 @@ export function AboutMe() {
                     <>
                       <div className="relative h-36 w-36 overflow-hidden rounded-[2rem] border border-white/12 bg-brand-accent/10 sm:h-40 sm:w-40 lg:h-48 lg:w-48">
                         <Image
-                          src="/images/william-about2.jpg"
+                          src="/api/private-photo/william-about2"
                           alt="William Leonel"
                           fill
                           sizes="(min-width: 1024px) 192px, (min-width: 640px) 160px, 144px"
@@ -74,7 +74,7 @@ export function AboutMe() {
                       </div>
                       <div className="relative h-36 w-36 overflow-hidden rounded-[2rem] border border-white/12 bg-brand-accent/10 sm:h-40 sm:w-40 lg:h-48 lg:w-48">
                         <Image
-                          src="/images/william-about.jpg"
+                          src="/api/private-photo/william-about"
                           alt="William Leonel sorrindo"
                           fill
                           sizes="(min-width: 1024px) 192px, (min-width: 640px) 160px, 144px"

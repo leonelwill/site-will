@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AnimateOnScroll } from "@/components/ui/AnimateOnScroll";
+import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import {
   ArrowRight,
   CheckCircle,
@@ -45,15 +46,19 @@ interface ContactFormData {
   goal: string;
   contactPreference: (typeof contactPreferences)[number]["value"];
   message: string;
+  website: string;
+  turnstileToken: string;
 }
 
 export function ContactCTA() {
   const searchParams = useSearchParams();
   const goalFromQuery = searchParams.get("goal");
   const initialGoal = goals.includes(goalFromQuery ?? "") ? goalFromQuery! : goals[0];
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const [formState, setFormState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [turnstileRenderKey, setTurnstileRenderKey] = useState(0);
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
     email: "",
@@ -62,10 +67,19 @@ export function ContactCTA() {
     goal: initialGoal,
     contactPreference: contactPreferences[0].value,
     message: "",
+    website: "",
+    turnstileToken: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (turnstileSiteKey && !formData.turnstileToken) {
+      setErrorMessage("Confirme a verificação anti-spam antes de enviar.");
+      setFormState("error");
+      return;
+    }
+
     setFormState("loading");
     setErrorMessage("");
 
@@ -87,19 +101,26 @@ export function ContactCTA() {
           goal: initialGoal,
           contactPreference: contactPreferences[0].value,
           message: "",
+          website: "",
+          turnstileToken: "",
         });
+        setTurnstileRenderKey((current) => current + 1);
       } else {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
         setErrorMessage(
           data?.error ||
             "No momento, não foi possível concluir o envio. Por favor, tente novamente em instantes."
         );
+        setFormData((current) => ({ ...current, turnstileToken: "" }));
+        setTurnstileRenderKey((current) => current + 1);
         setFormState("error");
       }
     } catch {
       setErrorMessage(
         "No momento, não foi possível concluir o envio. Por favor, tente novamente em instantes."
       );
+      setFormData((current) => ({ ...current, turnstileToken: "" }));
+      setTurnstileRenderKey((current) => current + 1);
       setFormState("error");
     }
   };
@@ -205,7 +226,22 @@ export function ContactCTA() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="relative space-y-5">
+                  <div
+                    className="pointer-events-none absolute -left-[100vw] top-auto h-0 w-0 overflow-hidden opacity-0"
+                    aria-hidden="true"
+                  >
+                    <label htmlFor="website">Website</label>
+                    <input
+                      id="website"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    />
+                  </div>
+
                   <div className="rounded-2xl border border-brand-primary/10 bg-muted/70 p-4">
                     <p className="text-sm font-semibold text-brand-dark">
                       Informações iniciais
@@ -356,6 +392,16 @@ export function ContactCTA() {
                     </div>
                   </details>
 
+                  {turnstileSiteKey ? (
+                    <TurnstileWidget
+                      key={turnstileRenderKey}
+                      siteKey={turnstileSiteKey}
+                      onTokenChange={(turnstileToken) =>
+                        setFormData((current) => ({ ...current, turnstileToken }))
+                      }
+                    />
+                  ) : null}
+
                   {formState === "error" && (
                     <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                       {errorMessage}
@@ -364,7 +410,9 @@ export function ContactCTA() {
 
                   <button
                     type="submit"
-                    disabled={formState === "loading"}
+                    disabled={
+                      formState === "loading" || (Boolean(turnstileSiteKey) && !formData.turnstileToken)
+                    }
                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-primary px-8 py-4 text-base font-semibold text-white transition-all hover:bg-brand-dark hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {formState === "loading" ? (

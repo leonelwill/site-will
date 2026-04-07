@@ -35,6 +35,8 @@ Site institucional e de captacao de leads para a assessoria de investimentos do 
   - `LEAD_FROM_EMAIL`
   - `NEXT_PUBLIC_SITE_URL`
   - `LEAD_WEBHOOK_URL` opcional
+  - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` opcional
+  - `TURNSTILE_SECRET_KEY` opcional
 
 ---
 
@@ -43,11 +45,11 @@ Site institucional e de captacao de leads para a assessoria de investimentos do 
 ```text
 src/
 ├── app/                          # Next.js App Router
-│   ├── layout.tsx                # Root layout (Montserrat local, Navbar, StickyContactBar, Footer, metadata SEO)
+│   ├── layout.tsx                # Root layout (Montserrat local, tema claro fixo, Navbar, StickyContactBar, Footer, metadata SEO + JSON-LD)
 │   ├── page.tsx                  # Homepage - compoe todas as sections em ordem
-│   ├── globals.css               # Design tokens, CSS custom properties, classes utilitarias
+│   ├── globals.css               # Design tokens, CSS custom properties, classes utilitarias e temas visuais
 │   └── api/
-│       └── lead/route.ts         # API serverless para captura de leads (POST)
+│       └── lead/route.ts         # API serverless de leads com validacao, rate limit, honeypot, timeout e validacao Turnstile opcional
 ├── components/
 │   ├── layout/                   # Componentes estruturais (presentes em todas as paginas)
 │   │   ├── Navbar.tsx            # Navegacao fixa em tema claro + menu mobile
@@ -57,19 +59,23 @@ src/
 │   │   ├── Hero.tsx              # Hero tipografico sem dependencia de foto, com WhatsApp e CTA de diagnostico
 │   │   ├── SocialProof.tsx       # Barra de numeros animados em cartao claro
 │   │   ├── AuthoritySection.tsx  # Bloco de autoridade e explicacao do processo de atendimento
-│   │   ├── AboutMe.tsx           # Secao "Sobre" em formato editorial, sem placeholder de foto
+│   │   ├── AboutMe.tsx           # Secao "Sobre" com foto do William, citaçao editorial e cards de perfil
 │   │   ├── WhyEthimos.tsx        # Diferenciais e premios da Ethimos
 │   │   ├── Services.tsx          # Servicos com 3 prioridades e grade secundaria compacta
 │   │   ├── Calculators.tsx       # Secao legacy; atualmente fora da homepage
 │   │   ├── Testimonials.tsx      # Secao legacy; atualmente fora da homepage
-│   │   └── ContactCTA.tsx        # CTA final com formulario reduzido e campos opcionais colapsados
+│   │   └── ContactCTA.tsx        # CTA final com formulario reduzido, honeypot e widget Turnstile opcional
 │   └── ui/                       # Componentes reutilizaveis de UI
 │       ├── AnimateOnScroll.tsx   # Wrapper Framer Motion para reveal no scroll
 │       ├── Counter.tsx           # Contador animado com IntersectionObserver
-│       └── SectionHeading.tsx    # Titulo padronizado de secao (eyebrow + title + desc)
+│       ├── SectionHeading.tsx    # Titulo padronizado de secao (eyebrow + title + desc)
+│       └── TurnstileWidget.tsx   # Integracao client-side com Cloudflare Turnstile
 ├── lib/
 │   ├── contact.ts                # Dados centralizados de contato, telefone e links externos
 │   └── utils.ts                  # Utilitarios (cn() para merge de classes)
+├── next.config.ts                # Headers de seguranca e configuracao global do Next.js
+├── public/images/                # Logos de marca publicas
+└── private-photos/               # Fotos pessoais locais ignoradas no Git e servidas por rota interna
 ```
 
 ### Convencoes de organizacao
@@ -79,6 +85,44 @@ src/
 - **`layout/`** contem componentes presentes em todas as paginas (via `layout.tsx`).
 - Novos componentes de pagina vao em `sections/`. Novos componentes atomicos vao em `ui/`.
 - Dados compartilhados de contato, telefone, localizacao e links sociais devem viver em `src/lib/contact.ts`.
+
+### Arquitetura atual da homepage
+
+- `layout.tsx` monta a casca global com metadata, JSON-LD, `Navbar`, `StickyContactBar`, `Footer` e tema claro fixado no `<html>`.
+- `page.tsx` compoe a landing page em uma unica rota estatica com 5 secoes ativas:
+  - `Hero`
+  - `AuthoritySection`
+  - `AboutMe`
+  - `Services`
+  - `ContactCTA`
+- `globals.css` concentra tokens da marca, variacoes de superficie (`theme-*`) e gradientes estruturais do site.
+- `contact.ts` centraliza telefone, e-mail, WhatsApp e links externos para evitar divergencia de copy/CTA entre componentes.
+- `next.config.ts` aplica hardening de producao com headers de seguranca e remove o `X-Powered-By`.
+
+### Arquitetura de captura de leads
+
+- O frontend envia `POST` para `/api/lead` com payload JSON.
+- `ContactCTA.tsx` trabalha com:
+  - campos essenciais sempre visiveis
+  - detalhes opcionais dentro de `<details>`
+  - campo honeypot invisivel (`website`)
+  - Cloudflare Turnstile opcional quando `NEXT_PUBLIC_TURNSTILE_SITE_KEY` estiver configurada
+- `src/app/api/lead/route.ts` faz:
+  - validacao de tipo, formato e tamanho dos campos
+  - exigencia de `name` + pelo menos um canal (`phone` ou `email`)
+  - validacao de origem em producao
+  - rate limit em memoria por IP
+  - timeout nas chamadas externas
+  - validacao server-side do Turnstile quando `TURNSTILE_SECRET_KEY` estiver configurada
+  - entrega concorrente para Resend e/ou webhook
+  - resposta `503` em producao se nenhum canal de entrega estiver configurado
+
+### Arquitetura de seguranca atual
+
+- CSP, `Referrer-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Permissions-Policy` e `Strict-Transport-Security` sao definidos em `next.config.ts` apenas para `production`.
+- O site nao depende mais de script inline para forcar o tema claro; isso reduz a superficie de CSP.
+- A rota de lead responde com `Cache-Control: no-store` e evita logar o payload completo do lead em erros.
+- Turnstile foi escolhido por funcionar no plano gratuito, sem dependencia de Vercel Pro.
 
 ---
 
@@ -177,6 +221,10 @@ As cores sao definidas como CSS custom properties em `globals.css` e expostas ao
    - `contactPreference`
    - `message` (opcional)
 6. O backend aceita lead com `name` + pelo menos um canal de contato (`phone` ou `email`).
+7. O formulario possui protecao anti-spam em camadas:
+   - honeypot invisivel
+   - rate limit na rota
+   - Cloudflare Turnstile opcional por env
 
 ### SEO
 
@@ -251,14 +299,13 @@ Ordem atual em `page.tsx`:
 - Footer claro usa `ethimos_investimentos_logo.png`
 - A logo branca deve ser reservada para blocos escuros reais
 
-### Fotos do William (placeholders ativos)
+### Fotos do William
 
-O site agora deve funcionar bem mesmo sem fotos reais, sem depender de placeholders visuais.
-
-Se no futuro forem adicionadas fotos:
-1. Adicionar `william-hero.jpg` (vertical 3:4) e `william-about.jpg` (quadrada) em `public/images/`
-2. Reintroduzir imagens apenas se elas realmente elevarem a percepcao premium do layout
-3. Evitar qualquer estado intermediario com "Sua foto aqui" em producao
+- `AboutMe.tsx` usa `next/image` apontando para `/api/private-photo/william-about` e `/api/private-photo/william-about2`
+- Os arquivos fisicos devem ficar em `private-photos/`
+- A imagem fica abaixo da dobra, com `loading="lazy"` e `priority={false}`
+- Existe fallback visual com iniciais `WL` caso a imagem falhe ao carregar
+- O `Hero` continua sem dependencia de foto para preservar clareza e velocidade no first paint
 
 ### Icones
 
@@ -282,13 +329,13 @@ Recebe dados do formulario de contato:
   "patrimonio": "string (opcional)",
   "goal": "string (opcional)",
   "contactPreference": "whatsapp | phone | email (opcional)",
-  "message": "string (opcional)"
+  "message": "string (opcional)",
+  "website": "string (honeypot, invisivel no fluxo normal)",
+  "turnstileToken": "string (opcional no payload; obrigatorio quando Turnstile estiver configurado)"
 }
 ```
 
 Retorna `{ success: true }` ou `{ error: "msg" }`.
-
-**TODO:** Integrar com servico de email (Resend) e/ou CRM Zeno.
 
 ### Entrega real de leads
 
@@ -298,11 +345,14 @@ O route handler atual ja suporta entrega real configuravel por ambiente:
 - `LEAD_NOTIFICATION_EMAIL`
 - `LEAD_FROM_EMAIL` (opcional)
 - `LEAD_WEBHOOK_URL`
+- `TURNSTILE_SECRET_KEY` (opcional, para validar anti-spam)
 
 Comportamento:
 - tenta enviar para webhook e/ou Resend
 - em `production`, se nenhum canal estiver configurado, responde erro para evitar perda silenciosa de lead
-- em ambiente sem configuracao, mantém fallback de log para desenvolvimento
+- valida origem e payload antes de tentar entregar
+- recusa abuso basico com rate limit e honeypot
+- se Turnstile estiver ativo, exige validacao server-side do token
 
 ### Dados de contato centralizados
 
@@ -356,12 +406,12 @@ npm run lint     # Linting com ESLint
 
 ## Proximos Passos (Roadmap)
 
-1. Adicionar fotos reais do William nos placeholders
-2. Configurar servico de email para leads (Resend)
-3. Integrar calculadoras do Zeno (Aposentadoria, Patrimonio, Financas) com captura real de lead
-4. Integrar leads com CRM Zeno
-5. Criar paginas /sobre e /calculadoras
-6. Adicionar depoimentos reais ou cases anonimizados
-7. Adicionar blog com conteudo educativo
-8. Medir conversao por origem (Instagram, LinkedIn, trafego direto)
-9. Dominio personalizado na Vercel
+1. Ativar `NEXT_PUBLIC_TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` em producao
+2. Integrar calculadoras do Zeno (Aposentadoria, Patrimonio, Financas) com captura real de lead
+3. Integrar leads com CRM Zeno
+4. Criar paginas /sobre e /calculadoras
+5. Adicionar depoimentos reais ou cases anonimizados
+6. Adicionar blog com conteudo educativo
+7. Medir conversao por origem (Instagram, LinkedIn, trafego direto)
+8. Refinar observabilidade de erros e entregas da rota `/api/lead`
+9. Revisar se vale adotar rate limit persistente fora de memoria no futuro
