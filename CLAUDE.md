@@ -74,8 +74,7 @@ src/
 │   ├── contact.ts                # Dados centralizados de contato, telefone e links externos
 │   └── utils.ts                  # Utilitarios (cn() para merge de classes)
 ├── next.config.ts                # Headers de seguranca e configuracao global do Next.js
-├── public/images/                # Logos de marca publicas
-└── private-photos/               # Fotos pessoais locais ignoradas no Git e servidas por rota interna
+└── public/images/                # Logos de marca publicas e fotos do William usadas no site
 ```
 
 ### Convencoes de organizacao
@@ -301,8 +300,8 @@ Ordem atual em `page.tsx`:
 
 ### Fotos do William
 
-- `AboutMe.tsx` usa `next/image` apontando para `/api/private-photo/william-about` e `/api/private-photo/william-about2`
-- Os arquivos fisicos devem ficar em `private-photos/`
+- `AboutMe.tsx` usa `next/image` apontando para `/images/william-about.jpg` e `/images/william-about2.jpg`
+- Os arquivos fisicos devem ficar em `public/images/`
 - A imagem fica abaixo da dobra, com `loading="lazy"` e `priority={false}`
 - Existe fallback visual com iniciais `WL` caso a imagem falhe ao carregar
 - O `Hero` continua sem dependencia de foto para preservar clareza e velocidade no first paint
