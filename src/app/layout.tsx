@@ -57,6 +57,15 @@ export const metadata: Metadata = {
   keywords:
     "assessor de investimentos, Ethimos Investimentos, BTG Pactual, planejamento financeiro, investimentos, William Leonel, assessoria financeira, wealth management",
   authors: [{ name: "William Leonel" }],
+  icons: {
+    icon: [
+      { url: "/images/ethimos_investimentos_logo.png", type: "image/png" },
+    ],
+    shortcut: ["/images/ethimos_investimentos_logo.png"],
+    apple: [
+      { url: "/images/ethimos_investimentos_logo.png", type: "image/png" },
+    ],
+  },
   openGraph: {
     title: "William Leonel | Assessor de Investimentos - Ethimos | BTG Pactual",
     description:
