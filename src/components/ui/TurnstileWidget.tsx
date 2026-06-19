@@ -39,16 +39,34 @@ export function TurnstileWidget({
   const [isVerifying, setIsVerifying] = useState(true);
   const [widgetError, setWidgetError] = useState<string | null>(null);
 
+  // Callbacks em refs: o efeito que renderiza o widget NÃO pode depender deles. O pai passa
+  // onTokenChange inline (nova identidade a cada render) → se entrasse nas deps, o widget era
+  // removido + recriado a cada tecla/mudança de status = Turnstile "piscando/rodando em loop"
+  // por minutos. Com refs, o widget é renderizado UMA vez e os callbacks chamados sempre na
+  // versão mais recente.
+  const onTokenChangeRef = useRef(onTokenChange);
+  const onStatusChangeRef = useRef(onStatusChange);
+  useEffect(() => {
+    onTokenChangeRef.current = onTokenChange;
+    onStatusChangeRef.current = onStatusChange;
+  });
+
+  // Se o script do Turnstile já estiver carregado (re-montagem / navegação), o onLoad do
+  // <Script> não dispara de novo — destrava o widget mesmo assim.
+  useEffect(() => {
+    if (window.turnstile) setScriptReady(true);
+  }, []);
+
   useEffect(() => {
     if (!siteKey) {
-      onTokenChange("");
-      onStatusChange?.("idle");
+      onTokenChangeRef.current("");
+      onStatusChangeRef.current?.("idle");
       return;
     }
 
     if (!scriptReady || !window.turnstile) return;
 
-    onStatusChange?.("verifying");
+    onStatusChangeRef.current?.("verifying");
 
     widgetIdRef.current = window.turnstile.render(`#${containerId}`, {
       sitekey: siteKey,
@@ -57,21 +75,21 @@ export function TurnstileWidget({
       callback: (token) => {
         setIsVerifying(false);
         setWidgetError(null);
-        onStatusChange?.("verified");
-        onTokenChange(token);
+        onStatusChangeRef.current?.("verified");
+        onTokenChangeRef.current(token);
       },
       "error-callback": () => {
         setIsVerifying(false);
-        onTokenChange("");
-        onStatusChange?.("error");
+        onTokenChangeRef.current("");
+        onStatusChangeRef.current?.("error");
         setWidgetError(
           "A proteção anti-spam não conseguiu concluir a verificação. Recarregue a página e, se continuar, confira o domínio configurado no Turnstile."
         );
       },
       "expired-callback": () => {
         setIsVerifying(false);
-        onTokenChange("");
-        onStatusChange?.("error");
+        onTokenChangeRef.current("");
+        onStatusChangeRef.current?.("error");
         setWidgetError("A verificação expirou. Confirme novamente para enviar.");
       },
     });
@@ -80,8 +98,8 @@ export function TurnstileWidget({
       setIsVerifying((current) => {
         if (!current) return current;
 
-        onTokenChange("");
-        onStatusChange?.("error");
+        onTokenChangeRef.current("");
+        onStatusChangeRef.current?.("error");
         setWidgetError(
           "A verificação está demorando mais do que o normal. Se estiver em produção, confira os hostnames do widget no Cloudflare Turnstile."
         );
@@ -96,7 +114,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [containerId, onStatusChange, onTokenChange, scriptReady, siteKey]);
+  }, [containerId, scriptReady, siteKey]);
 
   if (!siteKey) return null;
 
@@ -109,12 +127,12 @@ export function TurnstileWidget({
           setScriptReady(true);
           setIsVerifying(true);
           setWidgetError(null);
-          onStatusChange?.("verifying");
+          onStatusChangeRef.current?.("verifying");
         }}
         onError={() => {
           setIsVerifying(false);
-          onTokenChange("");
-          onStatusChange?.("error");
+          onTokenChangeRef.current("");
+          onStatusChangeRef.current?.("error");
           setWidgetError(
             "Não foi possível carregar a proteção anti-spam. Verifique conexão, bloqueadores de script ou a configuração do widget."
           );
