@@ -102,8 +102,8 @@ export default async function DownloadPage() {
             Zeno Light
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-            A plataforma de planejamento financeiro da Ethimos, no seu computador.
-            Escolha o seu sistema para baixar.
+            Uma plataforma de planejamento financeiro em testes para utilizar no seu
+            computador. Escolha o seu sistema para baixar.
           </p>
           {version ? (
             <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-brand-primary/10 bg-white/90 px-4 py-1.5 text-sm font-medium text-brand-primary shadow-sm">
