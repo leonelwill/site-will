@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export const revalidate = 600;
+export const revalidate = 60;
 
 const RELEASES_REPO = "leonelwill/zeno-light-releases";
 
@@ -30,7 +30,7 @@ async function getLatestRelease(): Promise<Release | null> {
       `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`,
       {
         headers: { Accept: "application/vnd.github+json" },
-        next: { revalidate: 600 },
+        next: { revalidate: 60 },
       }
     );
     if (!res.ok) return null;
