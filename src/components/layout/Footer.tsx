@@ -143,7 +143,7 @@ export function Footer() {
               </p>
             </div>
             <Link
-              href="/download"
+              href="/cloud"
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
             >
               <LogIn size={16} /> Parceiro interno? Acessar o Zeno Cloud
