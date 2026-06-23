@@ -54,6 +54,10 @@ export function TurnstileWidget({
   // Se o script do Turnstile já estiver carregado (re-montagem / navegação), o onLoad do
   // <Script> não dispara de novo — destrava o widget mesmo assim.
   useEffect(() => {
+    // Sync único pós-mount: se o script já estava carregado (re-montagem/navegação), destrava
+    // o widget. Não há cascata (roda 1x); um lazy useState causaria hydration mismatch (o SSR
+    // renderiza com !scriptReady). Por isso o setState-in-effect aqui é intencional.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (window.turnstile) setScriptReady(true);
   }, []);
 
