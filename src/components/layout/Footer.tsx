@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Mail, Phone, MapPin, Download } from "lucide-react";
+import { Mail, Phone, MapPin, LogIn } from "lucide-react";
 import { ReactNode } from "react";
 import { contactInfo } from "@/lib/contact";
 import { siteTheme } from "@/lib/theme";
@@ -146,7 +146,7 @@ export function Footer() {
               href="/download"
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
             >
-              <Download size={16} /> Parceiro interno? Baixar o Zeno Light
+              <LogIn size={16} /> Parceiro interno? Acessar o Zeno Cloud
             </Link>
           </div>
         </div>
