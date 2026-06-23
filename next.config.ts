@@ -47,6 +47,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    // A página de acesso ao Zeno Cloud migrou de /download para /cloud.
+    return [{ source: "/download", destination: "/cloud", permanent: true }];
+  },
   async headers() {
     if (process.env.NODE_ENV !== "production") {
       return [];
