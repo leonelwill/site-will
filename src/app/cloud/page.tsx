@@ -50,12 +50,15 @@ export default function AccessPage() {
         <div className="mt-10 flex flex-col items-center text-center">
           <ZenoMark size={80} />
           <h1 className="mt-6 text-4xl font-bold tracking-tight text-brand-primary sm:text-5xl">
-            Zeno Cloud
+            Bem-vindo ao Zeno Cloud
           </h1>
+          <p className="mt-3 text-lg font-medium text-brand-primary/80">
+            O planejamento financeiro da Ethimos, do seu jeito.
+          </p>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-            O Zeno Light foi descontinuado. O planejamento financeiro agora é no{" "}
-            <strong className="text-brand-primary">Zeno Cloud</strong> — direto no
-            navegador, sem instalar nada.
+            Monte planos de vida, projeções de patrimônio e apresentações que viram
+            conversa com o cliente — tudo direto no navegador, em qualquer dispositivo
+            e sem instalar nada.
           </p>
 
           <a
