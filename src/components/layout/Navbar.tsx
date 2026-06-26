@@ -6,12 +6,14 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { siteTheme } from "@/lib/theme";
 
+// Âncoras ABSOLUTAS (/#...) para funcionarem de qualquer página (ex.: /cloud),
+// não só da home. Na home, o navegador rola para a seção normalmente.
 const navLinks = [
-  { label: "Início", href: "#inicio" },
-  { label: "Autoridade", href: "#autoridade" },
-  { label: "Sobre", href: "#sobre" },
-  { label: "Serviços", href: "#servicos" },
-  { label: "Contato", href: "#contato" },
+  { label: "Início", href: "/#inicio" },
+  { label: "Autoridade", href: "/#autoridade" },
+  { label: "Sobre", href: "/#sobre" },
+  { label: "Serviços", href: "/#servicos" },
+  { label: "Contato", href: "/#contato" },
 ];
 
 export function Navbar() {
@@ -43,7 +45,7 @@ export function Navbar() {
         <div className="flex h-20 items-center justify-between">
           {/* Logo + acesso Zeno Cloud */}
           <div className="flex items-center gap-3 sm:gap-5">
-            <a href="#inicio" className="flex items-center gap-3">
+            <a href="/#inicio" className="flex items-center gap-3">
               <Image
                 src={siteTheme.light.logoSrc}
                 alt="Ethimos Investimentos"
@@ -100,7 +102,7 @@ export function Navbar() {
               </a>
             ))}
             <a
-              href="#contato"
+              href="/#contato"
               className="inline-flex items-center justify-center rounded-full bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-dark hover:shadow-lg hover:shadow-brand-primary/15"
             >
               Solicitar contato
@@ -134,7 +136,7 @@ export function Navbar() {
             ))}
             <div className="px-4 pt-2">
               <a
-                href="#contato"
+                href="/#contato"
                 onClick={() => setIsOpen(false)}
                 className="block w-full rounded-full bg-brand-primary px-5 py-3 text-center text-sm font-semibold text-white"
               >
