@@ -41,31 +41,52 @@ export function Navbar() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center justify-between">
-          {/* Logo */}
-          <a href="#inicio" className="flex items-center gap-3">
-            <Image
-              src={siteTheme.light.logoSrc}
-              alt="Ethimos Investimentos"
-              width={160}
-              height={40}
-              className={cn(
-                "theme-logo-light h-10 w-auto transition-all duration-300",
-                scrolled && "h-9"
-              )}
-              priority
-            />
-            <Image
-              src={siteTheme.dark.logoSrc}
-              alt="Ethimos Investimentos"
-              width={160}
-              height={40}
-              className={cn(
-                "theme-logo-dark h-10 w-auto transition-all duration-300",
-                scrolled && "h-9"
-              )}
-              priority
-            />
-          </a>
+          {/* Logo + acesso Zeno Cloud */}
+          <div className="flex items-center gap-3 sm:gap-5">
+            <a href="#inicio" className="flex items-center gap-3">
+              <Image
+                src={siteTheme.light.logoSrc}
+                alt="Ethimos Investimentos"
+                width={160}
+                height={40}
+                className={cn(
+                  "theme-logo-light h-10 w-auto transition-all duration-300",
+                  scrolled && "h-9"
+                )}
+                priority
+              />
+              <Image
+                src={siteTheme.dark.logoSrc}
+                alt="Ethimos Investimentos"
+                width={160}
+                height={40}
+                className={cn(
+                  "theme-logo-dark h-10 w-auto transition-all duration-300",
+                  scrolled && "h-9"
+                )}
+                priority
+              />
+            </a>
+
+            {/* Botão Zeno Cloud (interno Ethimos) — efeito "líquido" no hover: o branco
+                espalha do centro empurrando o azul p/ as bordas; texto vira azul e pulsa. */}
+            <a
+              href="/cloud"
+              aria-label="Acessar o Zeno Cloud (interno Ethimos)"
+              className="group relative flex flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-brand-primary bg-brand-primary px-3.5 py-1.5 leading-tight shadow-sm transition-shadow duration-300 hover:shadow-lg hover:shadow-brand-primary/20"
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 scale-0 rounded-[42%] bg-white transition-transform duration-500 ease-out group-hover:scale-[1.8]"
+              />
+              <span className="relative z-10 text-sm font-extrabold text-white transition-colors duration-300 group-hover:animate-pulse group-hover:text-brand-primary sm:text-base">
+                Zeno Cloud
+              </span>
+              <span className="relative z-10 mt-0.5 text-[0.55rem] font-semibold uppercase tracking-wider text-white/80 transition-colors duration-300 group-hover:text-brand-primary/70">
+                interno Ethimos
+              </span>
+            </a>
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
