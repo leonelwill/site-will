@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buscarEvento, marcarStatus } from "@/lib/evento";
+import { buscarEvento, desbloquearEvento, marcarStatus } from "@/lib/evento";
 
 /**
  * Proxy server-side da lista de convidados:
- * GET  /api/evento/[token]         → lista fresca (o client usa para atualizar)
- * POST /api/evento/[token]         → marcar status { convidadoId, status, pin }
+ * GET  /api/evento/[token]  → lista (metadados sem PIN; convidados exigem
+ *                             header `x-pin-acesso`, repassado daqui)
+ * POST /api/evento/[token]  → marcar status { convidadoId, status, pin }
  *
  * O browser só fala com a própria origem; quem conversa com o Zeno é o servidor.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
+  const pinAcesso = req.headers.get("x-pin-acesso") ?? undefined;
   try {
+    if (pinAcesso) {
+      // Chamada de desbloqueio/refresh: devolve o veredito cru do PIN.
+      const r = await desbloquearEvento(token, pinAcesso);
+      if (r.ok) return NextResponse.json({ convidados: r.convidados }, { headers: { "cache-control": "no-store" } });
+      return NextResponse.json({ erro: r.motivo }, { status: r.motivo === "pin" ? 401 : r.motivo === "limite" ? 429 : 502 });
+    }
     const data = await buscarEvento(token);
     if (!data) return NextResponse.json({ erro: "evento-nao-encontrado" }, { status: 404 });
     return NextResponse.json(data, { headers: { "cache-control": "no-store" } });
