@@ -67,14 +67,29 @@ interface Props {
   token: string;
   evento: EventoInfo;
   convidadosIniciais: ConvidadoPublico[];
+  bloqueadoInicial?: boolean;
+  pinPendente?: boolean;
 }
 
-export default function EventoClient({ token, evento, convidadosIniciais }: Props) {
+export default function EventoClient({
+  token,
+  evento,
+  convidadosIniciais,
+  bloqueadoInicial = false,
+  pinPendente = false,
+}: Props) {
   const [convidados, setConvidados] = useState<ConvidadoPublico[]>(convidadosIniciais);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<StatusConvite | "todos">("todos");
   const [carregando, setCarregando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+
+  // ── PIN de acesso (liberar a lista) ─────────────────────────────────────
+  const [liberado, setLiberado] = useState(!bloqueadoInicial);
+  const [pinAcesso, setPinAcesso] = useState("");
+  const [erroAcesso, setErroAcesso] = useState("");
+  const [verificando, setVerificando] = useState(false);
+  const inputAcessoRef = useRef<HTMLInputElement>(null);
 
   const [pinDialog, setPinDialog] = useState(false);
   const [pin, setPin] = useState("");
@@ -99,9 +114,20 @@ export default function EventoClient({ token, evento, convidadosIniciais }: Prop
   }, [convidados, busca, filtro]);
 
   const atualizar = useCallback(async () => {
+    if (!liberado) return;
     setCarregando(true);
     try {
-      const resp = await fetch(`/api/evento/${encodeURIComponent(token)}`, { cache: "no-store" });
+      const resp = await fetch(`/api/evento/${encodeURIComponent(token)}`, {
+        cache: "no-store",
+        headers: pinAcesso ? { "x-pin-acesso": pinAcesso } : undefined,
+      });
+      if (resp.status === 401) {
+        // PIN de acesso trocado no meio da sessão: volta ao desbloqueio.
+        setLiberado(false);
+        setPinAcesso("");
+        setErroAcesso("O PIN de acesso mudou — digite novamente.");
+        return;
+      }
       if (!resp.ok) return;
       const data = await resp.json();
       if (data?.convidados) setConvidados(data.convidados as ConvidadoPublico[]);
@@ -110,15 +136,46 @@ export default function EventoClient({ token, evento, convidadosIniciais }: Prop
     } finally {
       setCarregando(false);
     }
-  }, [token]);
+  }, [token, liberado, pinAcesso]);
+
+  const liberar = useCallback(async () => {
+    if (!/^\d{4,8}$/.test(pinAcesso)) {
+      setErroAcesso("O PIN tem de 4 a 8 dígitos.");
+      return;
+    }
+    setVerificando(true);
+    setErroAcesso("");
+    try {
+      const resp = await fetch(`/api/evento/${encodeURIComponent(token)}`, {
+        cache: "no-store",
+        headers: { "x-pin-acesso": pinAcesso },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setConvidados((data?.convidados ?? []) as ConvidadoPublico[]);
+        setLiberado(true);
+      } else if (resp.status === 401) {
+        setErroAcesso("PIN incorreto — confira com o William.");
+      } else if (resp.status === 429) {
+        setErroAcesso("Muitas tentativas. Aguarde alguns minutos.");
+      } else {
+        setErroAcesso("Servidor indisponível — tente novamente.");
+      }
+    } catch {
+      setErroAcesso("Sem conexão — tente novamente.");
+    } finally {
+      setVerificando(false);
+    }
+  }, [token, pinAcesso]);
 
   // Atualização periódica (confirmações feitas por outra pessoa aparecem sozinhas).
   useEffect(() => {
+    if (!liberado) return;
     const id = setInterval(() => {
       if (document.visibilityState === "visible") atualizar();
     }, 60_000);
     return () => clearInterval(id);
-  }, [atualizar]);
+  }, [atualizar, liberado]);
 
   const marcar = useCallback(
     async (convidado: ConvidadoPublico, status: StatusConvite) => {
@@ -239,7 +296,53 @@ export default function EventoClient({ token, evento, convidadosIniciais }: Prop
         </div>
       </section>
 
-      {/* ── Lista de convidados ───────────────────────────────────────────── */}
+      {/* ── Lista de convidados (protegida por PIN de acesso) ─────────────── */}
+      {!liberado ? (
+        <section className="bg-[#F7F1E6] pb-24 pt-12">
+          <div className="mx-auto max-w-md px-4 sm:px-6">
+            <div className="rounded-2xl border border-[#0A2342]/10 bg-white p-8 text-center shadow-sm">
+              <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#F0E6D2] text-[#0A2342]">
+                <Lock size={26} />
+              </span>
+              <h2 className="mt-5 text-xl font-bold text-[#0A2342]">Lista protegida</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[#0A2342]/60">
+                {pinPendente
+                  ? "O organizador ainda vai definirir o PIN de acesso. Avise-o para abrir a tela do evento no Zeno — leva segundos."
+                  : "Digite o PIN de acesso que você recebeu junto com o link para ver os convidados."}
+              </p>
+              {!pinPendente && (
+                <>
+                  <input
+                    ref={inputAcessoRef}
+                    value={pinAcesso}
+                    onChange={(e) => setPinAcesso(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") liberar();
+                    }}
+                    inputMode="numeric"
+                    placeholder="••••••"
+                    className="mt-5 w-full rounded-xl border border-[#0A2342]/20 bg-[#F7F1E6] px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.4em] text-[#0A2342] focus:border-[#0A2342]/50 focus:outline-none"
+                  />
+                  {erroAcesso && (
+                    <p className="mt-2 text-sm font-medium text-rose-600">{erroAcesso}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={liberar}
+                    disabled={verificando}
+                    className="mt-4 w-full rounded-xl bg-[#0A2342] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#132f56] disabled:opacity-50"
+                  >
+                    {verificando ? "Verificando…" : "Acessar lista"}
+                  </button>
+                </>
+              )}
+              <p className="mt-6 text-xs text-[#0A2342]/40">
+                Acesso pessoal e intransferível · Ethimos Investimentos
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : (
       <section className="bg-[#F7F1E6] pb-24 pt-12">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -419,6 +522,7 @@ export default function EventoClient({ token, evento, convidadosIniciais }: Prop
           </p>
         </div>
       </section>
+      )}
 
       {/* ── Dialog do PIN ─────────────────────────────────────────────────── */}
       {pinDialog && (

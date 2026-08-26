@@ -31,19 +31,58 @@ export interface ConvidadoPublico {
 export interface EventoResponse {
   evento: EventoInfo;
   convidados: ConvidadoPublico[];
+  /** true = exige PIN de acesso (header x-pin-acesso) para ver os convidados. */
+  bloqueado?: boolean;
+  /** true = o organizador ainda não definiu o PIN de acesso (doc legado). */
+  pinPendente?: boolean;
 }
 
 export type StatusConvite = ConvidadoPublico["status"];
 
-/** Busca a lista no Zeno. `null` = token não existe (404) — vira página 404 no site. */
-export async function buscarEvento(token: string): Promise<EventoResponse | null> {
+/** Resultado da tentativa de desbloqueio com PIN de acesso. */
+export type ResultadoDesbloqueio =
+  | { ok: true; convidados: ConvidadoPublico[] }
+  | { ok: false; motivo: "pin" | "limite" | "erro" };
+
+export async function desbloquearEvento(
+  token: string,
+  pinAcesso: string
+): Promise<ResultadoDesbloqueio> {
+  try {
+    const resp = await fetch(`${ZENO_CLOUD_URL}/api/evento/${encodeURIComponent(token)}`, {
+      cache: "no-store",
+      headers: { "x-pin-acesso": pinAcesso },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (resp.ok) {
+      const data = (await resp.json()) as EventoResponse;
+      return { ok: true, convidados: data.convidados ?? [] };
+    }
+    if (resp.status === 401) return { ok: false, motivo: "pin" };
+    if (resp.status === 429) return { ok: false, motivo: "limite" };
+    return { ok: false, motivo: "erro" };
+  } catch {
+    return { ok: false, motivo: "erro" };
+  }
+}
+
+/**
+ * Busca a lista no Zeno. `null` = token não existe (404) — vira página 404 no site.
+ * Com `pinAcesso`, envia o header `x-pin-acesso` (header, nunca query: query vaza
+ * em log de acesso); sem PIN válido o Zeno devolve os convidados vazios.
+ */
+export async function buscarEvento(token: string, pinAcesso?: string): Promise<EventoResponse | null> {
   const resp = await fetch(`${ZENO_CLOUD_URL}/api/evento/${encodeURIComponent(token)}`, {
     cache: "no-store",
+    headers: pinAcesso ? { "x-pin-acesso": pinAcesso } : undefined,
     signal: AbortSignal.timeout(10_000),
   });
   if (resp.status === 404) return null;
-  if (!resp.ok) throw new Error(`Zeno respondeu ${resp.status}`);
-  return (await resp.json()) as EventoResponse;
+  // PIN errado vem como 401 com o corpo da resposta bloqueada — trata igual ao
+  // bloqueio (o site decide a mensagem a partir do corpo).
+  const data = (await resp.json().catch(() => null)) as EventoResponse | null;
+  if (!data) throw new Error(`Zeno respondeu ${resp.status}`);
+  return data;
 }
 
 /** Repassa uma marcação de status (valida token + PIN + rate limit no Zeno). */
