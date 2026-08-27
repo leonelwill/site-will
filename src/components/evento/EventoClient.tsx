@@ -8,10 +8,10 @@
  * Cores pontuais do tema em arbitrary values de propósito: são do FLYER, não
  * da marca recorrente — tokens novos no globals.css seriam para um único uso.
  *
- * Privacidade: aqui só existem nome + sobrenome + status (o proxy server-side
- * já recebe essa projeção do Zeno — nada de contato/CPF/PL chega ao browser).
- * Modo controle: PIN em memória (nunca persistido), validado no servidor a
- * cada marcação.
+ * Privacidade: aqui só existem nome + sobrenome + status + faixa potencial em
+ * bucket (o proxy server-side já recebe essa projeção do Zeno — nada de
+ * contato/CPF/PL cru chega ao browser). Modo controle: PIN em memória (nunca
+ * persistido), validado no servidor a cada marcação.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -437,26 +437,31 @@ export default function EventoClient({
             </div>
           </div>
 
-          {/* Cards */}
+          {/* Lista (formato listra — fácil de percorrer em quantidade) */}
           {listaFiltrada.length > 0 ? (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {listaFiltrada.map((c) => (
-                <div
-                  key={c.id}
-                  className={
-                    salvandoId === c.id
-                      ? "animate-pulse rounded-2xl border border-[#0A2342]/10 bg-white p-4 shadow-sm"
-                      : "rounded-2xl border border-[#0A2342]/10 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-                  }
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#F0E6D2] text-sm font-bold text-[#0A2342]">
-                      {iniciais(c)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-[#172033]">{nomeCompleto(c)}</p>
+            <div className="mt-6 overflow-hidden rounded-2xl border border-[#0A2342]/10 bg-white shadow-sm">
+              <ul className="divide-y divide-[#0A2342]/5">
+                {listaFiltrada.map((c) => (
+                  <li
+                    key={c.id}
+                    className={
+                      salvandoId === c.id
+                        ? "animate-pulse px-4 py-3"
+                        : "px-4 py-3 transition-colors hover:bg-[#F0E6D2]/40"
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F0E6D2] text-sm font-bold text-[#0A2342]">
+                        {iniciais(c)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-[#172033]">{nomeCompleto(c)}</p>
+                        {c.faixa && (
+                          <p className="truncate text-xs font-medium text-[#0A2342]/50">{c.faixa}</p>
+                        )}
+                      </div>
                       <span
-                        className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide ${CHIP_STATUS[c.status]}`}
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide ${CHIP_STATUS[c.status]}`}
                       >
                         {c.status === "confirmado"
                           ? "Confirmado"
@@ -465,41 +470,41 @@ export default function EventoClient({
                             : "Recusado"}
                       </span>
                     </div>
-                  </div>
 
-                  {modoControle && (
-                    <div className="mt-3 flex items-center gap-1.5 border-t border-[#0A2342]/10 pt-3">
-                      <span className="mr-auto text-[0.68rem] font-semibold uppercase tracking-wide text-[#0A2342]/40">
-                        Marcar:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => marcar(c, "confirmado")}
-                        disabled={c.status === "confirmado"}
-                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-30"
-                      >
-                        <Check size={13} /> Vai
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => marcar(c, "pendente")}
-                        disabled={c.status === "pendente"}
-                        className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-600 disabled:opacity-30"
-                      >
-                        <Clock size={13} /> Talvez
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => marcar(c, "recusado")}
-                        disabled={c.status === "recusado"}
-                        className="inline-flex items-center gap-1 rounded-lg bg-rose-500 px-2.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-rose-600 disabled:opacity-30"
-                      >
-                        <X size={13} /> Não vai
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    {modoControle && (
+                      <div className="mt-2 flex items-center gap-1.5 border-t border-[#0A2342]/10 pt-2">
+                        <span className="mr-auto text-[0.68rem] font-semibold uppercase tracking-wide text-[#0A2342]/40">
+                          Marcar:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => marcar(c, "confirmado")}
+                          disabled={c.status === "confirmado"}
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-30"
+                        >
+                          <Check size={13} /> Vai
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => marcar(c, "pendente")}
+                          disabled={c.status === "pendente"}
+                          className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-600 disabled:opacity-30"
+                        >
+                          <Clock size={13} /> Talvez
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => marcar(c, "recusado")}
+                          disabled={c.status === "recusado"}
+                          className="inline-flex items-center gap-1 rounded-lg bg-rose-500 px-2.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-rose-600 disabled:opacity-30"
+                        >
+                          <X size={13} /> Não vai
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : (
             <div className="mt-6 rounded-2xl border border-dashed border-[#0A2342]/20 bg-white/60 px-6 py-14 text-center">
