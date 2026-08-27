@@ -26,6 +26,12 @@ export interface ConvidadoPublico {
   nome: string;
   sobrenome: string;
   status: "pendente" | "confirmado" | "recusado";
+  /**
+   * Faixa potencial (bucket de patrimônio, ex. "De R$ 300 a 500 mil") atrás do
+   * PIN de acesso — rótulo pronto, nunca o PL cru. Ausente em convidado sem PL
+   * na base (prospect) ou convidado anterior ao campo.
+   */
+  faixa?: string | null;
 }
 
 export interface EventoResponse {
