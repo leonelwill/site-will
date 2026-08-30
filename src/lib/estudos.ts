@@ -49,8 +49,24 @@ export interface Questao {
   gabaritoOficial?: number;
   gabaritoIA?: number;
   explicacao?: string;
+  /** Pista exibida ANTES da resposta (ícone "?") — orienta sem revelar o gabarito. */
+  dica?: string;
   microtemaPdId?: string;
   provenance: Provenance;
+}
+
+/**
+ * Dica exibível da questão: `dica` escrita quando existe e/ou o título do
+ * microtema do PD como localizador ("isso cai em …"). null = nada a mostrar —
+ * a tela NÃO desenha o botão (afordância falsa, não).
+ */
+export function dicaDaQuestao(
+  q: Questao,
+  microtemas: Record<string, string> | undefined
+): { dica?: string; microtema?: string } | null {
+  const dica = q.dica?.trim() || undefined;
+  const microtema = q.microtemaPdId ? microtemas?.[q.microtemaPdId] : undefined;
+  return dica || microtema ? { dica, microtema } : null;
 }
 
 export interface CompletudeItem {
@@ -92,6 +108,8 @@ export type ItemSessaoPost =
       resultado: "certo" | "errado" | "nulo";
       origem: OrigemQuestao;
       tipo: TipoQuestao;
+      /** Resposta dada com a dica aberta — declarada na sessão (Carta 3). */
+      usouDica?: boolean;
     };
 
 export interface SessaoPost {
@@ -121,6 +139,8 @@ export interface EstudoCompleto {
   painel?: PainelHome;
   microtemaMenosCoberto?: string | null;
   erradasRecentes?: { questaoId: string }[];
+  /** Títulos dos microtemas do PD (id → título) — alimenta a dica de fallback. */
+  microtemas?: Record<string, string>;
   bloqueado: false;
 }
 

@@ -15,10 +15,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, RotateCcw, X } from "lucide-react";
+import { Check, CircleHelp, RotateCcw, X } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
+  dicaDaQuestao,
   postarSessao,
   type CardEstudo,
   type EstudoCompleto,
@@ -40,6 +41,17 @@ interface Rascunho {
   inicioEm: string;
   indice: number;
   resultados: Record<string, "certo" | "errado" | "nulo">;
+  /** Questões respondidas com a dica aberta (Carta 3: declara na sessão). */
+  dicas?: Record<string, true>;
+}
+
+/** Feedback pós-resposta de questão — o avanço espera o "Próxima". */
+interface Feedback {
+  questaoId: string;
+  resultado: "certo" | "errado" | "nulo";
+  escolhida: number;
+  gabarito: number | null;
+  gabaritoEhOficial: boolean;
 }
 
 function hojeISO(): string {
@@ -101,8 +113,10 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
   const [retomado, setRetomado] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
-  const [resumo, setResumo] = useState<{ minutos: number; itens: number; acertos: number } | null>(null);
+  const [resumo, setResumo] = useState<{ minutos: number; itens: number; acertos: number; comDica: number } | null>(null);
   const [selecaoQuestao, setSelecaoQuestao] = useState<number | null>(null);
+  /** Feedback da questão respondida — enquanto ativo, o avanço espera "Próxima". */
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   // Cards virados na tela (revela o verso SEM avançar — só Errei/Acertei avançam).
   const [versosAbertos, setVersosAbertos] = useState<Set<string>>(new Set());
 
@@ -153,11 +167,17 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
   const total = itens.length;
   const respondidos = rascunho ? Object.keys(rascunho.resultados).length : 0;
 
+  /** Grava o resultado no rascunho; `avancar=false` só na questão (o avanço
+   *  espera o "Próxima" do feedback — registrar não é avançar às cegas). */
   const registrar = useCallback(
-    (id: string, resultado: "certo" | "errado" | "nulo") => {
+    (id: string, resultado: "certo" | "errado" | "nulo", avancar = true) => {
       setRascunho((r) => {
         if (!r) return r;
-        const novo = { ...r, resultados: { ...r.resultados, [id]: resultado }, indice: Math.min(r.indice + 1, total) };
+        const novo = {
+          ...r,
+          resultados: { ...r.resultados, [id]: resultado },
+          indice: avancar ? Math.min(r.indice + 1, total) : r.indice,
+        };
         try {
           localStorage.setItem(chaveRascunho, JSON.stringify(novo));
         } catch {
@@ -168,6 +188,38 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
     },
     [chaveRascunho, total]
   );
+
+  /** Dica aberta para a questão — marca no rascunho (vira usouDica no POST). */
+  const marcarDica = useCallback(
+    (id: string) => {
+      setRascunho((r) => {
+        if (!r) return r;
+        const novo = { ...r, dicas: { ...(r.dicas ?? {}), [id]: true as const } };
+        try {
+          localStorage.setItem(chaveRascunho, JSON.stringify(novo));
+        } catch {
+          /* só em memória */
+        }
+        return novo;
+      });
+    },
+    [chaveRascunho]
+  );
+
+  const avancarFeedback = useCallback(() => {
+    setFeedback(null);
+    setSelecaoQuestao(null);
+    setRascunho((r) => {
+      if (!r) return r;
+      const novo = { ...r, indice: Math.min(r.indice + 1, total) };
+      try {
+        localStorage.setItem(chaveRascunho, JSON.stringify(novo));
+      } catch {
+        /* só em memória */
+      }
+      return novo;
+    });
+  }, [chaveRascunho, total]);
 
   const finalizar = useCallback(async () => {
     if (!rascunho || itens.length === 0) {
@@ -183,6 +235,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
     );
     const postItens: ItemSessaoPost[] = [];
     let acertos = 0;
+    let comDica = 0;
     for (const item of itens) {
       const id = item.tipo === "card" ? item.card.id : item.questao.id;
       const resultado = rascunho.resultados[id];
@@ -191,11 +244,14 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
       if (item.tipo === "card") {
         postItens.push({ cardId: id, resultado });
       } else {
+        const usouDica = !!rascunho.dicas?.[id];
+        if (usouDica) comDica++;
         postItens.push({
           questaoId: id,
           resultado,
           origem: item.questao.origem,
           tipo: item.questao.tipo,
+          ...(usouDica ? { usouDica: true } : {}),
         });
       }
     }
@@ -214,7 +270,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
       } catch {
         /* ok */
       }
-      setResumo({ minutos, itens: postItens.length, acertos });
+      setResumo({ minutos, itens: postItens.length, acertos, comDica });
     } catch {
       setErroSalvar("Não consegui gravar a sessão — ela segue salva aqui; tente de novo.");
     } finally {
@@ -232,6 +288,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
         <h2 className="mt-4 text-lg font-bold text-brand-primary">Sessão gravada</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           {resumo.itens} itens · {resumo.acertos} certos · {resumo.minutos} min (competência de hoje)
+          {resumo.comDica > 0 && ` · ${resumo.comDica} com dica`}
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           Revisões agendadas — nenhuma além da véspera da prova.
@@ -268,6 +325,13 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
   const cardAtual = atual?.tipo === "card" ? atual.card : null;
   const questaoAtual = atual?.tipo === "questao" ? atual.questao : null;
   const versoAberto = cardAtual ? versosAbertos.has(cardAtual.id) : false;
+  // Feedback vale só para a questão que o originou (estado volátil por item).
+  const feedbackAtivo = !!(
+    feedback &&
+    questaoAtual &&
+    feedback.questaoId === questaoAtual.id
+  );
+  const dicaAberta = !!(questaoAtual && rascunho?.dicas?.[questaoAtual.id]);
 
   return (
     <div className="space-y-4">
@@ -344,54 +408,170 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
 
       {questaoAtual && (
         <article className="rounded-2xl border bg-card p-5 shadow-sm">
-          <div className="mb-2 flex flex-wrap gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+          <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
             <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-brand-primary">
               {RÓTULOS_ORIGEM[questaoAtual.origem]}
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
               {RÓTULOS_TIPO[questaoAtual.tipo]}
             </span>
+            {(() => {
+              // (?) só quando há o que mostrar (dica escrita ou microtema do PD)
+              // e a resposta ainda não saiu — depois do feedback não existe dúvida.
+              const dica = dicaDaQuestao(questaoAtual, dados.microtemas);
+              if (!dica || feedbackAtivo) return null;
+              if (dicaAberta) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={() => marcarDica(questaoAtual.id)}
+                  className="ml-auto inline-flex items-center gap-1 rounded-full border border-brand-gold/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark hover:bg-brand-gold/10"
+                >
+                  <CircleHelp size={12} /> Dica
+                </button>
+              );
+            })()}
           </div>
+          {(() => {
+            const dica = dicaDaQuestao(questaoAtual, dados.microtemas);
+            if (!dica || !dicaAberta) return null;
+            return (
+              <div className="mb-3 rounded-xl border border-brand-gold/50 bg-brand-gold/10 p-3 text-sm">
+                {dica.dica && (
+                  <p className="font-medium leading-relaxed text-foreground">{dica.dica}</p>
+                )}
+                {dica.microtema && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Microtema do PD: {dica.microtema}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
           <p className="text-sm font-semibold leading-relaxed text-foreground">{questaoAtual.enunciado}</p>
           <div className="mt-3 space-y-2">
-            {questaoAtual.alternativas.map((alt, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-pressed={selecaoQuestao === i}
-                onClick={() => setSelecaoQuestao(i)}
+            {questaoAtual.alternativas.map((alt, i) => {
+              const eAEscolhida = feedbackAtivo
+                ? feedback.escolhida === i
+                : selecaoQuestao === i;
+              const classe = feedbackAtivo
+                ? feedback.gabarito === i
+                  ? // Certa: verde em destaque.
+                    "border-emerald-600 bg-emerald-50 font-semibold text-emerald-900"
+                  : feedback.escolhida === i
+                    ? // A escolhida errada: vermelha com anel forte.
+                      "border-rose-300 bg-rose-50 text-rose-900 ring-2 ring-rose-500 font-semibold"
+                    : "border-border bg-card text-foreground opacity-70"
+                : selecaoQuestao === i
+                  ? "border-brand-primary bg-brand-primary/5 font-semibold"
+                  : "border-border bg-background hover:border-brand-primary/50";
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  aria-pressed={eAEscolhida}
+                  disabled={feedbackAtivo}
+                  onClick={() => setSelecaoQuestao(i)}
+                  className={cn(
+                    "flex w-full items-start gap-2.5 rounded-xl border p-3 text-left text-sm disabled:cursor-default",
+                    classe
+                  )}
+                >
+                  <span className="font-mono text-xs font-bold text-brand-gold">
+                    {String.fromCharCode(65 + i)}
+                  </span>
+                  <span className="text-foreground">{alt}</span>
+                </button>
+              );
+            })}
+          </div>
+          {feedbackAtivo ? (
+            <div
+              className={cn(
+                "mt-4 rounded-xl border p-4",
+                feedback.resultado === "certo"
+                  ? "border-emerald-200 bg-emerald-50"
+                  : feedback.resultado === "errado"
+                    ? "border-rose-200 bg-rose-50"
+                    : "border-border bg-muted"
+              )}
+            >
+              <p
                 className={cn(
-                  "flex w-full items-start gap-2.5 rounded-xl border p-3 text-left text-sm",
-                  selecaoQuestao === i
-                    ? "border-brand-primary bg-brand-primary/5 font-semibold"
-                    : "border-border bg-background hover:border-brand-primary/50"
+                  "flex items-center gap-1.5 text-sm font-bold",
+                  feedback.resultado === "certo"
+                    ? "text-emerald-700"
+                    : feedback.resultado === "errado"
+                      ? "text-rose-700"
+                      : "text-muted-foreground"
                 )}
               >
-                <span className="font-mono text-xs font-bold text-brand-gold">
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <span className="text-foreground">{alt}</span>
+                {feedback.resultado === "certo" && <><Check size={16} /> Você acertou</>}
+                {feedback.resultado === "errado" && <><X size={16} /> Você errou</>}
+                {feedback.resultado === "nulo" && <>Sem gabarito — resposta registrada como nula</>}
+              </p>
+              {feedback.gabarito !== null && (
+                <p className="mt-1.5 text-sm font-bold text-emerald-700">
+                  {feedback.gabaritoEhOficial
+                    ? "Gabarito oficial: "
+                    : "Gabarito IA — sem oficial: "}
+                  {String.fromCharCode(65 + feedback.gabarito)}
+                </p>
+              )}
+              {feedback.resultado === "errado" && (
+                <p className="mt-0.5 text-sm font-medium text-rose-700">
+                  Sua resposta: {String.fromCharCode(65 + feedback.escolhida)}
+                </p>
+              )}
+              {feedback.resultado !== "nulo" && questaoAtual.explicacao && (
+                <div className="mt-2.5 rounded-lg bg-card p-3 text-sm leading-relaxed text-foreground">
+                  {questaoAtual.explicacao}
+                </div>
+              )}
+              {feedback.resultado === "errado" && !questaoAtual.explicacao && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Sem explicação disponível para esta questão.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() =>
+                  indice + 1 >= total ? finalizar() : avancarFeedback()
+                }
+                className="mt-3 w-full rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
+              >
+                {indice + 1 >= total ? "Última — gravar sessão" : "Próxima"}
               </button>
-            ))}
-          </div>
-          {selecaoQuestao !== null && (
-            <button
-              type="button"
-              onClick={() => {
-                const gabarito = questaoAtual.gabaritoOficial ?? questaoAtual.gabaritoIA;
-                const resultado =
-                  gabarito === undefined || gabarito === null
-                    ? "nulo"
-                    : selecaoQuestao === gabarito
-                      ? "certo"
-                      : "errado";
-                setSelecaoQuestao(null);
-                registrar(questaoAtual.id, resultado);
-              }}
-              className="mt-4 w-full rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
-            >
-              Responder
-            </button>
+            </div>
+          ) : (
+            selecaoQuestao !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  const gabaritoOficial = questaoAtual.gabaritoOficial;
+                  const gabaritoIA = questaoAtual.gabaritoIA;
+                  const gabarito = gabaritoOficial ?? gabaritoIA;
+                  const resultado =
+                    gabarito === undefined || gabarito === null
+                      ? "nulo"
+                      : selecaoQuestao === gabarito
+                        ? "certo"
+                        : "errado";
+                  setFeedback({
+                    questaoId: questaoAtual.id,
+                    resultado,
+                    escolhida: selecaoQuestao,
+                    gabarito: gabarito ?? null,
+                    gabaritoEhOficial: gabaritoOficial !== undefined && gabaritoOficial !== null,
+                  });
+                  // Registra SEM avançar: o avanço é decisão do "Próxima".
+                  registrar(questaoAtual.id, resultado, false);
+                }}
+                className="mt-4 w-full rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
+              >
+                Responder
+              </button>
+            )
           )}
         </article>
       )}
