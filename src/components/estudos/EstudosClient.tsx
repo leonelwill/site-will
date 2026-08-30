@@ -18,13 +18,14 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { Calendar, Check, CircleHelp, Lock, Play, RefreshCw, Search, Timer } from "lucide-react";
+import { Calendar, Check, CircleHelp, Lock, Play, RefreshCw, Search, ThumbsDown, Timer } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
   diasCorridosAteProva,
   dicaDaQuestao,
   formatarDataProva,
+  postarFeedback,
   type Estudo,
   type OrigemQuestao,
   type TipoQuestao,
@@ -81,13 +82,30 @@ export default function EstudosClient({ token, inicial }: Props) {
   const [respostas, setRespostas] = useState<Record<string, number>>({});
   /** Questões respondidas com a dica aberta (Carta 3: declarado no painel). */
   const [dicasAbertas, setDicasAbertas] = useState<Record<string, true>>({});
+  /** Thumbs-down enviados nesta sessão de navegação (feedback só p/ geradas). */
+  const [rejeitadasLocal, setRejeitadasLocal] = useState<Record<string, true>>({});
+
+  const rejeitarQuestao = useCallback(
+    async (questaoId: string) => {
+      try {
+        await postarFeedback(token, pin, questaoId);
+        setRejeitadasLocal((r) => ({ ...r, [questaoId]: true }));
+      } catch {
+        /* silencioso: botão continua disponível para tentar de novo */
+      }
+    },
+    [token, pin]
+  );
   const [filtroOrigem, setFiltroOrigem] = useState<OrigemQuestao | "todas">("todas");
   const [filtroTipo, setFiltroTipo] = useState<TipoQuestao | "todos">("todos");
   const [busca, setBusca] = useState("");
   // F1b: home ("banco" = lista de questões) · sessão zero-decisão · simulado.
   const [vista, setVista] = useState<"banco" | "estudar" | "simulado">("banco");
 
-  const questoes = useMemo(() => (dados.bloqueado ? [] : dados.questoes), [dados]);
+  const questoes = useMemo(
+    () => (dados.bloqueado ? [] : dados.questoes.filter((q) => !q.rejeitadaEm)),
+    [dados]
+  );
 
   /** Títulos do PD (dica de fallback) — undefined quando bloqueado. */
   const microtemas = dados.bloqueado ? undefined : dados.microtemas;
@@ -391,7 +409,7 @@ export default function EstudosClient({ token, inicial }: Props) {
             <SessaoEstudo
               token={token}
               pin={pin}
-              dados={dados}
+              dados={{ ...dados, questoes }}
               aoFechar={(salvou) => {
                 setVista("banco");
                 if (salvou) {
@@ -406,7 +424,7 @@ export default function EstudosClient({ token, inicial }: Props) {
             <Simulado
               token={token}
               pin={pin}
-              dados={dados}
+              dados={{ ...dados, questoes }}
               aoFechar={(salvou) => {
                 setVista("banco");
                 if (salvou) void desbloquear();
@@ -633,6 +651,20 @@ export default function EstudosClient({ token, inicial }: Props) {
                           {q.explicacao}
                         </div>
                       )}
+                      {q.origem === "gerada" &&
+                        (rejeitadasLocal[q.id] ? (
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Questão reportada — sai do simulado e da fila de estudo.
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void rejeitarQuestao(q.id)}
+                            className="inline-flex items-center gap-1 self-start rounded-xl border px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50"
+                          >
+                            <ThumbsDown size={13} /> Reportar questão gerada
+                          </button>
+                        ))}
                       <button
                         type="button"
                         onClick={() => irParaProxima(indice)}

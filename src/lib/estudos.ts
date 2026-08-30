@@ -51,6 +51,8 @@ export interface Questao {
   explicacao?: string;
   /** Pista exibida ANTES da resposta (ícone "?") — orienta sem revelar o gabarito. */
   dica?: string;
+  /** Thumbs-down (questão gerada rejeitada): some das listas, sinal fica no Zeno. */
+  rejeitadaEm?: string;
   microtemaPdId?: string;
   provenance: Provenance;
 }
@@ -241,6 +243,30 @@ export async function postarSessao(
   }
   const corpo = (await resp.json().catch(() => null)) as { reviewsAtualizados?: number } | null;
   if (resp.ok) return { ok: true, reviewsAtualizados: corpo?.reviewsAtualizados ?? 0 };
+  throw new EstudoApiError(`Zeno respondeu ${resp.status}`, resp.status);
+}
+
+/**
+ * Thumbs-down de questão gerada (POST /api/estudos/<token>/feedback, via proxy).
+ * Só aceita `origem='gerada'`; 200 → {ok:true}.
+ */
+export async function postarFeedback(
+  token: string,
+  pin: string,
+  questaoId: string
+): Promise<{ ok: true }> {
+  let resp: Response;
+  try {
+    resp = await fetch(`/api/estudos/${encodeURIComponent(token)}/feedback`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-pin-leitura": pin },
+      body: JSON.stringify({ questaoId }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    throw new EstudoApiError("Falha ao enviar feedback (rede)", 0);
+  }
+  if (resp.ok) return { ok: true };
   throw new EstudoApiError(`Zeno respondeu ${resp.status}`, resp.status);
 }
 

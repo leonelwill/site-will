@@ -15,11 +15,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, CircleHelp, RotateCcw, X } from "lucide-react";
+import { Check, CircleHelp, RotateCcw, ThumbsDown, X } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
   dicaDaQuestao,
+  postarFeedback,
   postarSessao,
   type CardEstudo,
   type EstudoCompleto,
@@ -117,6 +118,8 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
   const [selecaoQuestao, setSelecaoQuestao] = useState<number | null>(null);
   /** Feedback da questão respondida — enquanto ativo, o avanço espera "Próxima". */
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  /** Thumbs-down enviado nesta tela (feedback só p/ geradas). */
+  const [rejeitadaLocal, setRejeitadaLocal] = useState<Record<string, true>>({});
   // Cards virados na tela (revela o verso SEM avançar — só Errei/Acertei avançam).
   const [versosAbertos, setVersosAbertos] = useState<Set<string>>(new Set());
 
@@ -533,6 +536,26 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
                   Sem explicação disponível para esta questão.
                 </p>
               )}
+              {questaoAtual.origem === "gerada" &&
+                (rejeitadaLocal[questaoAtual.id] ? (
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">
+                    Questão reportada — sai do simulado e da fila.
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      postarFeedback(token, pin, questaoAtual.id)
+                        .then(() => setRejeitadaLocal((r) => ({ ...r, [questaoAtual.id]: true })))
+                        .catch(() => {
+                          /* silencioso: fica disponível para tentar de novo */
+                        });
+                    }}
+                    className="mt-2 inline-flex items-center gap-1 self-start text-xs font-bold text-rose-700 hover:underline"
+                  >
+                    <ThumbsDown size={13} /> Reportar questão gerada
+                  </button>
+                ))}
               <button
                 type="button"
                 onClick={() =>
