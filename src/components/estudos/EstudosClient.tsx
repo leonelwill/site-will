@@ -18,11 +18,12 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { Calendar, Check, Lock, Play, RefreshCw, Search, Timer } from "lucide-react";
+import { Calendar, Check, CircleHelp, Lock, Play, RefreshCw, Search, Timer } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
   diasCorridosAteProva,
+  dicaDaQuestao,
   formatarDataProva,
   type Estudo,
   type OrigemQuestao,
@@ -78,6 +79,8 @@ export default function EstudosClient({ token, inicial }: Props) {
   // ── Sessão de estudo: seleção e respostas só em memória ────────────────
   const [selecao, setSelecao] = useState<Record<string, number>>({});
   const [respostas, setRespostas] = useState<Record<string, number>>({});
+  /** Questões respondidas com a dica aberta (Carta 3: declarado no painel). */
+  const [dicasAbertas, setDicasAbertas] = useState<Record<string, true>>({});
   const [filtroOrigem, setFiltroOrigem] = useState<OrigemQuestao | "todas">("todas");
   const [filtroTipo, setFiltroTipo] = useState<TipoQuestao | "todos">("todos");
   const [busca, setBusca] = useState("");
@@ -85,6 +88,9 @@ export default function EstudosClient({ token, inicial }: Props) {
   const [vista, setVista] = useState<"banco" | "estudar" | "simulado">("banco");
 
   const questoes = useMemo(() => (dados.bloqueado ? [] : dados.questoes), [dados]);
+
+  /** Títulos do PD (dica de fallback) — undefined quando bloqueado. */
+  const microtemas = dados.bloqueado ? undefined : dados.microtemas;
 
   const contagemOrigem = useMemo(() => {
     const m = new Map<OrigemQuestao, number>();
@@ -138,8 +144,21 @@ export default function EstudosClient({ token, inicial }: Props) {
         if (ok) acGerada++;
       }
     }
-    return { respondidas, acertos, nOficial, acOficial, nDigitada, acDigitada, nGerada, acGerada };
-  }, [questoes, respostas]);
+    const comDica = questoes.filter(
+      (q) => respostas[q.id] !== undefined && dicasAbertas[q.id]
+    ).length;
+    return {
+      respondidas,
+      acertos,
+      nOficial,
+      acOficial,
+      nDigitada,
+      acDigitada,
+      nGerada,
+      acGerada,
+      comDica,
+    };
+  }, [questoes, respostas, dicasAbertas]);
 
   // ── Desbloqueio (client → proxy da própria origem → Zeno) ──────────────
   const desbloquear = useCallback(async () => {
@@ -201,6 +220,7 @@ export default function EstudosClient({ token, inicial }: Props) {
   const reiniciarSessao = () => {
     setRespostas({});
     setSelecao({});
+    setDicasAbertas({});
   };
 
   // Prova: DD/MM/AAAA · N dias corridos (dias só no futuro; datas puras UTC).
@@ -491,6 +511,8 @@ export default function EstudosClient({ token, inicial }: Props) {
               const escolhida = selecao[q.id];
               const respondida = respostas[q.id] !== undefined;
               const gabarito = q.gabaritoOficial ?? q.gabaritoIA ?? null;
+              const dica = dicaDaQuestao(q, microtemas);
+              const dicaAberta = !!dicasAbertas[q.id];
               return (
                 <article
                   key={q.id}
@@ -512,7 +534,30 @@ export default function EstudosClient({ token, inicial }: Props) {
                         <Check size={12} /> Respondida
                       </span>
                     )}
+                    {dica && !respondida && !dicaAberta && (
+                      <button
+                        type="button"
+                        onClick={() => setDicasAbertas((d) => ({ ...d, [q.id]: true }))}
+                        aria-label={`Ver dica da questão ${indice + 1}`}
+                        className="ml-auto inline-flex items-center gap-1 rounded-full border border-brand-gold/60 px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide text-brand-dark hover:bg-brand-gold/10"
+                      >
+                        <CircleHelp size={12} /> Dica
+                      </button>
+                    )}
                   </div>
+
+                  {dica && dicaAberta && (
+                    <div className="mt-2.5 rounded-xl border border-brand-gold/50 bg-brand-gold/10 p-3 text-sm">
+                      {dica.dica && (
+                        <p className="font-medium leading-relaxed text-foreground">{dica.dica}</p>
+                      )}
+                      {dica.microtema && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Microtema do PD: {dica.microtema}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <p className="mt-2.5 whitespace-pre-line text-sm font-semibold leading-relaxed text-foreground">
                     {q.enunciado}
@@ -629,6 +674,7 @@ export default function EstudosClient({ token, inicial }: Props) {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
                 <span className="font-bold text-brand-primary">
                   Acertos: {sessao.acertos}/{sessao.respondidas}
+                  {sessao.comDica > 0 && ` · ${sessao.comDica} com dica`}
                 </span>
                 <span className="text-muted-foreground">
                   Oficial:{" "}

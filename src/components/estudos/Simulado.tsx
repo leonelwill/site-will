@@ -74,6 +74,8 @@ function hojeISO(): string {
   return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
 }
 
+const letra = (idx: number) => String.fromCharCode(65 + idx);
+
 interface Props {
   pin: string;
   token: string;
@@ -271,6 +273,14 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
     const gerada = porOrigem("gerada");
     const semResposta = montado.questoes.filter((q) => escolhas[q.id] === undefined).length;
 
+    // Revisão das erradas: durante a prova NADA vaza (fidelidade de simulado);
+    // a explicação vem aqui, no resumo — errar sem entender é só metade do estudo.
+    const erradas = montado.questoes.filter((q) => {
+      const gab = q.gabaritoOficial ?? q.gabaritoIA;
+      const esc = escolhas[q.id];
+      return gab !== undefined && gab !== null && esc !== undefined && esc !== gab;
+    });
+
     return (
       <div className="space-y-4">
         <div className="rounded-2xl border bg-card p-6 shadow-sm">
@@ -313,6 +323,67 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
             </p>
           )}
         </div>
+        {erradas.length > 0 && (
+          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-brand-primary">
+              Revisão das erradas ({erradas.length})
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Toque para abrir: gabarito + explicação de cada erro.
+            </p>
+            <div className="mt-3 space-y-2">
+              {erradas.map((q, i) => {
+                const gab = q.gabaritoOficial ?? q.gabaritoIA ?? 0;
+                const esc = escolhas[q.id] ?? 0;
+                return (
+                  <details
+                    key={q.id}
+                    className="rounded-xl border bg-background open:border-brand-gold/60"
+                  >
+                    <summary className="cursor-pointer list-none p-3 text-sm font-semibold text-foreground marker:hidden">
+                      <span className="mr-1.5 font-mono text-xs font-bold text-brand-gold">
+                        {i + 1}.
+                      </span>
+                      {q.enunciado.length > 110
+                        ? `${q.enunciado.slice(0, 110).trimEnd()}…`
+                        : q.enunciado}
+                    </summary>
+                    <div className="space-y-2 border-t p-3 pt-3">
+                      <p className="text-sm">
+                        <span className="font-bold text-rose-700">
+                          Sua resposta: {letra(esc)}
+                        </span>
+                        <span className="ml-2 text-muted-foreground">
+                          {q.alternativas[esc]}
+                        </span>
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-bold text-emerald-700">
+                          {q.gabaritoOficial !== undefined && q.gabaritoOficial !== null
+                            ? "Gabarito oficial: "
+                            : "Gabarito IA — sem oficial: "}
+                          {letra(gab)}
+                        </span>
+                        <span className="ml-2 text-muted-foreground">
+                          {q.alternativas[gab]}
+                        </span>
+                      </p>
+                      {q.explicacao ? (
+                        <div className="rounded-lg bg-muted p-3 text-sm leading-relaxed text-foreground">
+                          {q.explicacao}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Sem explicação disponível para esta questão.
+                        </p>
+                      )}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {erroSalvar && (
           <p className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-700">
             {erroSalvar}
