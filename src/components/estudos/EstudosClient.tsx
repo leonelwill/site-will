@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { ArrowLeft, Calendar, Check, CircleHelp, Lock, Play, RefreshCw, Search, ThumbsDown, Timer } from "lucide-react";
+import { ArrowLeft, Calendar, Check, CircleHelp, ListTree, Lock, Play, RefreshCw, Search, ThumbsDown, Timer, X } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
@@ -33,6 +33,7 @@ import {
   type OrigemQuestao,
   type TipoQuestao,
 } from "@/lib/estudos";
+import MenuTemas from "./MenuTemas";
 import SessaoEstudo from "./SessaoEstudo";
 import Simulado from "./Simulado";
 import { cn } from "@/lib/utils";
@@ -109,9 +110,19 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
   );
   const [filtroOrigem, setFiltroOrigem] = useState<OrigemQuestao | "todas">("todas");
   const [filtroTipo, setFiltroTipo] = useState<TipoQuestao | "todos">("todos");
+  /**
+   * Estado da questão. `pendentes` é o padrão: quem já respondeu numa sessão
+   * gravada sai da lista, senão o banco vira uma pilha que nunca diminui.
+   */
+  const [filtroEstado, setFiltroEstado] = useState<"pendentes" | "respondidas" | "todas">(
+    "pendentes"
+  );
+  /** Recorte vindo do menu de temas: ids de microtema + o rótulo para a tela. */
+  const [recorteTema, setRecorteTema] = useState<{ ids: string[]; rotulo: string } | null>(null);
   const [busca, setBusca] = useState("");
   // F1b: home ("banco" = lista de questões) · sessão zero-decisão · simulado.
-  const [vista, setVista] = useState<"banco" | "estudar" | "simulado">("banco");
+  // F1c: "temas" = menu de macrotemas/microtemas do programa.
+  const [vista, setVista] = useState<"banco" | "estudar" | "simulado" | "temas">("banco");
 
   const questoes = useMemo(
     () => (dados.bloqueado ? [] : dados.questoes.filter((q) => !q.rejeitadaEm)),
@@ -133,15 +144,48 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
     return m;
   }, [questoes]);
 
+  /**
+   * Questões já respondidas em sessões GRAVADAS. Só o que veio do servidor —
+   * o que foi respondido agora, nesta tela, continua visível até o próximo
+   * carregamento: fazer a questão sumir debaixo do dedo assim que se responde
+   * seria hostil no meio de uma sessão.
+   */
+  const jaRespondidas = useMemo(
+    () => new Set((dados.bloqueado ? [] : (dados.respondidas ?? [])).map((r) => r.questaoId)),
+    [dados]
+  );
+
+  const temasEscolhidos = useMemo(
+    () => (recorteTema ? new Set(recorteTema.ids) : null),
+    [recorteTema]
+  );
+
   const listaFiltrada = useMemo(() => {
     const termo = fold(busca.trim());
-    return questoes.filter(
-      (q) =>
-        (filtroOrigem === "todas" || q.origem === filtroOrigem) &&
-        (filtroTipo === "todos" || q.tipo === filtroTipo) &&
-        (!termo || fold(q.enunciado).includes(termo))
-    );
-  }, [questoes, filtroOrigem, filtroTipo, busca]);
+    return questoes.filter((q) => {
+      if (filtroOrigem !== "todas" && q.origem !== filtroOrigem) return false;
+      if (filtroTipo !== "todos" && q.tipo !== filtroTipo) return false;
+      if (filtroEstado === "pendentes" && jaRespondidas.has(q.id)) return false;
+      if (filtroEstado === "respondidas" && !jaRespondidas.has(q.id)) return false;
+      if (temasEscolhidos && !(q.microtemaPdId && temasEscolhidos.has(q.microtemaPdId))) return false;
+      if (termo && !fold(q.enunciado).includes(termo)) return false;
+      return true;
+    });
+  }, [questoes, filtroOrigem, filtroTipo, filtroEstado, jaRespondidas, temasEscolhidos, busca]);
+
+  const contagemEstado = useMemo(() => {
+    const respondidas = questoes.filter((q) => jaRespondidas.has(q.id)).length;
+    return { respondidas, pendentes: questoes.length - respondidas };
+  }, [questoes, jaRespondidas]);
+
+  /** Vem do menu de temas: recorta o banco e volta para ele. */
+  const escolherTema = useCallback((ids: string[], rotulo: string) => {
+    setRecorteTema({ ids, rotulo });
+    // Um tema escolhido quer TODAS as suas questões à vista, inclusive as já
+    // respondidas — o gesto é "quero ver isso", não "quero o que falta".
+    setFiltroEstado("todas");
+    setVista("banco");
+  }, []);
 
   /** Acertos/respondidas gerais + % oficial (simulado-oficial) e % gerada,
    *  SEPARADOS — nunca somadas. Sem gabarito (oficial ou IA) não entra nas %. */
@@ -421,13 +465,40 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
               >
                 <Timer size={15} /> Simulado
               </button>
+              <button
+                type="button"
+                onClick={() => setVista("temas")}
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-border px-3 py-3 text-sm font-bold text-est-fg-soft hover:bg-est-sunken hover:text-est-fg"
+              >
+                <ListTree size={15} /> Temas
+              </button>
             </div>
           </div>
         )}
 
         {/* Vista F1b: sessão zero-decisão ou simulado substituem o banco.
             O guard !dados.bloqueado estreita a union para o tipo completo. */}
-        {vista === "estudar" && !dados.bloqueado ? (
+        {vista === "temas" && !dados.bloqueado ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setVista("banco")}
+              className="mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-est-border px-3 py-2.5 text-xs font-bold text-est-fg-soft transition-colors hover:bg-est-sunken hover:text-est-fg"
+            >
+              <ArrowLeft size={14} /> Voltar ao banco
+            </button>
+            {dados.arvoreTemas && dados.arvoreTemas.length > 0 ? (
+              <MenuTemas modulos={dados.arvoreTemas} aoEscolher={escolherTema} />
+            ) : (
+              // Curso sem PD ingerido (o C-Pro R está assim): dizer isso é mais
+              // honesto que uma árvore vazia que parece um erro de carregamento.
+              <p className="rounded-xl border border-est-warning/40 bg-est-warning-soft px-3 py-2.5 text-sm text-est-warning">
+                O programa detalhado desta certificação ainda não foi ingerido — sem ele não há
+                como montar o menu de temas.
+              </p>
+            )}
+          </div>
+        ) : vista === "estudar" && !dados.bloqueado ? (
           <div className="mt-6">
             <SessaoEstudo
               token={token}
@@ -466,6 +537,68 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
               placeholder="Buscar no enunciado…"
               className="min-h-11 w-full rounded-xl border border-est-border bg-est-card py-3 pl-9 pr-3 text-sm text-est-fg placeholder:text-est-fg-soft focus:border-est-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-est-primary focus-visible:ring-offset-2 focus-visible:ring-offset-est-bg"
             />
+          </div>
+
+          {/* Recorte vindo do menu de temas — sempre visível e sempre removível:
+              filtro escondido é a origem do "sumiram minhas questões". */}
+          {recorteTema && (
+            <div className="flex items-center gap-2 rounded-xl border border-est-primary/40 bg-est-primary/10 px-3 py-2">
+              <ListTree size={15} className="shrink-0 text-est-primary-ink" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-xs font-bold text-est-fg">
+                Tema: {recorteTema.rotulo}
+              </span>
+              <button
+                type="button"
+                onClick={() => setRecorteTema(null)}
+                aria-label="Remover o filtro de tema"
+                className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-est-primary-ink hover:bg-est-primary/10"
+              >
+                <X size={14} /> Limpar
+              </button>
+            </div>
+          )}
+
+          {/* Estado da questão. Eixo SEPARADO do de origem: misturar "digitada"
+              com "já respondida" no mesmo grupo faria dois recortes parecerem
+              alternativas um do outro. */}
+          <div
+            className="flex gap-2 overflow-x-auto pb-1"
+            role="group"
+            aria-label="Filtrar por estado da questão"
+          >
+            <button
+              type="button"
+              aria-pressed={filtroEstado === "pendentes"}
+              onClick={() => setFiltroEstado("pendentes")}
+              className={cn(
+                "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
+                filtroEstado === "pendentes" ? "bg-est-primary text-est-primary-fg" : "border bg-est-card text-est-fg-soft hover:text-est-primary-ink"
+              )}
+            >
+              Ainda não respondidas · {contagemEstado.pendentes}
+            </button>
+            <button
+              type="button"
+              aria-pressed={filtroEstado === "respondidas"}
+              onClick={() => setFiltroEstado("respondidas")}
+              className={cn(
+                "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
+                filtroEstado === "respondidas" ? "bg-est-primary text-est-primary-fg" : "border bg-est-card text-est-fg-soft hover:text-est-primary-ink"
+              )}
+            >
+              Já respondidas · {contagemEstado.respondidas}
+            </button>
+            <button
+              type="button"
+              aria-pressed={filtroEstado === "todas"}
+              onClick={() => setFiltroEstado("todas")}
+              className={cn(
+                "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
+                filtroEstado === "todas" ? "bg-est-primary text-est-primary-fg" : "border bg-est-card text-est-fg-soft hover:text-est-primary-ink"
+              )}
+            >
+              Todas · {questoes.length}
+            </button>
           </div>
 
           <div
@@ -708,16 +841,44 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
           </div>
         ) : (
           <div className="mt-6 rounded-2xl border border-dashed bg-est-card/60 px-6 py-14 text-center">
-            <p className="font-semibold text-est-primary-ink">
-              {questoes.length === 0
-                ? "Nenhuma questão ingerida ainda"
-                : "Nenhuma questão com esses filtros"}
-            </p>
-            <p className="mt-1 text-sm text-est-fg-soft">
-              {questoes.length === 0
-                ? "As questões aparecem aqui assim que a ingestão rodar no Zeno."
-                : "Ajuste a busca ou volte para “Todas”/“Todos”."}
-            </p>
+            {/* Vazio tem CAUSAS diferentes e a mais provável — "já respondi
+                todas" — é sucesso, não falha. Dizer qual é evita o susto de
+                achar que o banco sumiu. */}
+            {questoes.length === 0 ? (
+              <>
+                <p className="font-semibold text-est-primary-ink">Nenhuma questão ingerida ainda</p>
+                <p className="mt-1 text-sm text-est-fg-soft">
+                  As questões aparecem aqui assim que você adicionar material no Zeno.
+                </p>
+              </>
+            ) : filtroEstado === "pendentes" && contagemEstado.pendentes === 0 ? (
+              <>
+                <p className="font-semibold text-est-positive">
+                  Você já respondeu todas as {questoes.length} questões
+                </p>
+                <p className="mt-1 text-sm text-est-fg-soft">
+                  Abra “Já respondidas” para revisar, ou “Estudar agora” para as revisões vencidas.
+                </p>
+              </>
+            ) : filtroEstado === "respondidas" && contagemEstado.respondidas === 0 ? (
+              <>
+                <p className="font-semibold text-est-primary-ink">Nada respondido ainda</p>
+                <p className="mt-1 text-sm text-est-fg-soft">
+                  Uma questão entra aqui quando você a responde numa sessão gravada.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-est-primary-ink">
+                  Nenhuma questão com esses filtros
+                </p>
+                <p className="mt-1 text-sm text-est-fg-soft">
+                  {recorteTema
+                    ? "Este tema não tem questão que case com os outros filtros — limpe o tema ou volte para “Todas”."
+                    : "Ajuste a busca ou volte para “Todas”/“Todos”."}
+                </p>
+              </>
+            )}
           </div>
         )}
 
