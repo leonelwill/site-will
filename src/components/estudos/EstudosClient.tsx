@@ -3,10 +3,13 @@
 /**
  * Tela pública do banco de estudos (link oculto /est/<token>).
  *
- * Molde visual do EventoClient, mas sobre os TOKENS da marca do site
- * (--brand-primary #253164, --brand-gold #C9A84C, superfícies theme-* do
- * globals.css) — nenhuma cor nova fora dos tokens; verde/vermelho de
- * certo/errado são cores semânticas de status, como no EventoClient.
+ * Veste o **Zeno Concept**, não a marca institucional do site: o escopo
+ * `.estudos` do globals.css redefine tudo (azul-gelo + azul vivo no claro,
+ * Tokyo Night no escuro) e os componentes só leem `--est-*`. O dourado do site
+ * saiu daqui por decisão do William (30/08/2026) — isto é ferramenta de
+ * estudo, não peça de marca. Verde/vermelho de certo/errado continuam sendo
+ * status, mas agora tokenizados (`est-positive`/`est-negative`), senão o
+ * `emerald-50` fixo viraria bloco branco no tema escuro.
  *
  * Privacidade: PIN de leitura e respostas vivem SÓ em memória (estado React)
  * — nada em localStorage. O browser só fala com o proxy da própria origem
@@ -18,7 +21,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { Calendar, Check, CircleHelp, Lock, Play, RefreshCw, Search, ThumbsDown, Timer } from "lucide-react";
+import { ArrowLeft, Calendar, Check, CircleHelp, Lock, Play, RefreshCw, Search, ThumbsDown, Timer } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
@@ -66,14 +69,22 @@ interface Props {
   token: string;
   /** Dados do SSR: bloqueado (200 sem PIN) ou completo (doc sem pin no SSR). */
   inicial: Estudo;
+  /**
+   * PIN já digitado na vitrine do hub. Quando o hub abre um curso, o curso
+   * chega DESTRAVADO e o PIN precisa vir junto — é ele que autentica o POST de
+   * sessão e o de feedback. Sem isto, gravar a sessão devolveria 401.
+   */
+  pinInicial?: string;
+  /** Volta para a vitrine — só existe quando se chegou por ela. */
+  aoVoltar?: () => void;
 }
 
-export default function EstudosClient({ token, inicial }: Props) {
+export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: Props) {
   const [dados, setDados] = useState<Estudo>(inicial);
   const [fase, setFase] = useState<Fase>(inicial.bloqueado ? "bloqueado" : "completo");
 
   // ── PIN de leitura: só em memória ──────────────────────────────────────
-  const [pin, setPin] = useState("");
+  const [pin, setPin] = useState(pinInicial ?? "");
   const [pinErro, setPinErro] = useState<string | null>(null);
   const [erroMsg, setErroMsg] = useState<string | null>(null);
 
@@ -256,14 +267,14 @@ export default function EstudosClient({ token, inicial }: Props) {
   // ── Tela: PIN (bloqueado + carregando) e erro de rede ──────────────────
   if (fase === "erro") {
     return (
-      <section className="flex min-h-[60vh] items-center bg-background px-4 py-16">
-        <div className="mx-auto max-w-md rounded-2xl border bg-card p-8 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-brand-primary">Não deu para carregar</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{erroMsg}</p>
+      <section className="estudos flex min-h-[60vh] items-center px-4">
+        <div className="mx-auto max-w-md rounded-2xl border bg-est-card p-8 text-center shadow-sm">
+          <h1 className="text-xl font-bold text-est-primary-ink">Não deu para carregar</h1>
+          <p className="mt-2 text-sm leading-relaxed text-est-fg-soft">{erroMsg}</p>
           <button
             type="button"
             onClick={() => setFase("bloqueado")}
-            className="mt-5 w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-dark"
+            className="mt-5 w-full rounded-xl bg-est-primary px-4 py-3 text-sm font-bold text-est-primary-fg transition-colors hover:bg-est-primary/90"
           >
             Tentar de novo
           </button>
@@ -276,19 +287,19 @@ export default function EstudosClient({ token, inicial }: Props) {
     const verificando = fase === "carregando";
     const curso = dados.curso;
     return (
-      <section className="flex min-h-[60vh] items-center bg-background px-4 py-16">
+      <section className="estudos flex min-h-[60vh] items-center px-4">
         <div className="mx-auto w-full max-w-md">
-          <div className="rounded-2xl border bg-card p-8 text-center shadow-sm">
-            <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-brand-gold/15 text-brand-primary">
+          <div className="rounded-2xl border bg-est-card p-8 text-center shadow-sm">
+            <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-est-primary/10 text-est-primary-ink">
               <Lock size={26} />
             </span>
-            <h1 className="mt-5 text-xl font-bold text-brand-primary">{curso.rotulo}</h1>
+            <h1 className="mt-5 text-xl font-bold text-est-primary-ink">{curso.rotulo}</h1>
             {curso.contagens.questoes > 0 && (
-              <p className="mt-1 text-sm font-medium text-muted-foreground">
+              <p className="mt-1 text-sm font-medium text-est-fg-soft">
                 {curso.contagens.questoes} questões ingeridas
               </p>
             )}
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 text-sm leading-relaxed text-est-fg-soft">
               Digite o PIN de leitura para abrir o banco de questões.
             </p>
             <input
@@ -301,18 +312,18 @@ export default function EstudosClient({ token, inicial }: Props) {
               disabled={verificando}
               placeholder="••••••"
               aria-label="PIN de leitura (6 dígitos)"
-              className="mt-5 w-full rounded-xl border bg-muted px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.4em] text-foreground focus:border-brand-primary focus:outline-none disabled:opacity-50"
+              className="mt-5 w-full rounded-xl border border-est-border bg-est-sunken px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.4em] text-est-fg focus:border-est-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-est-primary focus-visible:ring-offset-2 focus-visible:ring-offset-est-bg disabled:opacity-50"
             />
-            {pinErro && <p className="mt-2 text-sm font-medium text-rose-600">{pinErro}</p>}
+            {pinErro && <p className="mt-2 text-sm font-medium text-est-negative">{pinErro}</p>}
             <button
               type="button"
               onClick={desbloquear}
               disabled={verificando}
-              className="mt-4 w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-dark disabled:opacity-50"
+              className="mt-4 w-full rounded-xl bg-est-primary px-4 py-3 text-sm font-bold text-est-primary-fg transition-colors hover:bg-est-primary/90 disabled:opacity-50"
             >
               {verificando ? "Verificando…" : "Desbloquear"}
             </button>
-            <p className="mt-6 text-xs text-muted-foreground">
+            <p className="mt-6 text-xs text-est-fg-soft">
               Acesso pessoal e intransferível · William Leonel
             </p>
           </div>
@@ -325,14 +336,23 @@ export default function EstudosClient({ token, inicial }: Props) {
   const curso = dados.curso; // EstudoCompleto (fase "completo")
 
   return (
-    <section className="bg-background px-4 py-10 sm:px-6">
+    <section className="estudos px-4 sm:px-6">
       <div className="mx-auto max-w-5xl">
         {/* Cabeçalho */}
         <header>
-          <h1 className="text-2xl font-bold tracking-tight text-brand-primary sm:text-3xl">
+          {aoVoltar && (
+            <button
+              type="button"
+              onClick={aoVoltar}
+              className="mb-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-est-border px-3 py-2.5 text-xs font-bold text-est-fg-soft transition-colors hover:bg-est-sunken hover:text-est-fg"
+            >
+              <ArrowLeft size={14} /> Todos os cursos
+            </button>
+          )}
+          <h1 className="text-2xl font-bold tracking-tight text-est-primary-ink sm:text-3xl">
             {curso.rotulo}
           </h1>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
+          <p className="mt-1 text-sm font-medium text-est-fg-soft">
             {curso.contagens.questoes} questões ingeridas
           </p>
           {/* Dias corridos dependem do relógio local × servidor: diferença de
@@ -340,9 +360,9 @@ export default function EstudosClient({ token, inicial }: Props) {
           {linhaProva && (
             <p
               suppressHydrationWarning
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm font-medium text-foreground"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border bg-est-card px-3 py-2 text-sm font-medium text-est-fg"
             >
-              <Calendar size={16} className="shrink-0 text-brand-gold" />
+              <Calendar size={16} className="shrink-0 text-est-primary-ink" />
               {linhaProva}
             </p>
           )}
@@ -355,46 +375,49 @@ export default function EstudosClient({ token, inicial }: Props) {
         {!dados.bloqueado && vista === "banco" && (
           <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {dados.curso.dataProva && (
-              <div className="rounded-xl border bg-card p-3.5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <div className="rounded-xl border border-est-border bg-est-card p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-est-fg-soft">
                   Dias p/ a prova
                 </p>
-                <p className="mt-1 text-xl font-bold text-brand-primary" suppressHydrationWarning>
+                <p
+                  className="mt-1 flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums text-est-primary-ink"
+                  suppressHydrationWarning
+                >
                   {diasCorridosAteProva(dados.curso.dataProva) ?? "—"}
-                  <span className="ml-1 text-xs font-medium text-muted-foreground">dias corridos</span>
+                  <span className="text-xs font-medium text-est-fg-soft">dias corridos</span>
                 </p>
               </div>
             )}
-            <div className="rounded-xl border bg-card p-3.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <div className="rounded-xl border border-est-border bg-est-card p-3.5">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-est-fg-soft">
                 Revisões vencidas hoje
               </p>
-              <p className="mt-1 text-xl font-bold text-brand-primary">
+              <p className="mt-1 flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums text-est-primary-ink">
                 {dados.painel?.vencidasHoje ?? dados.reviews?.length ?? 0}
-                <span className="ml-1 text-xs font-medium text-muted-foreground">cards</span>
+                <span className="text-xs font-medium text-est-fg-soft">cards</span>
               </p>
             </div>
-            <div className="rounded-xl border bg-card p-3.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <div className="rounded-xl border border-est-border bg-est-card p-3.5">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-est-fg-soft">
                 Cobertura do programa
               </p>
-              <p className="mt-1 text-xl font-bold text-brand-primary">
+              <p className="mt-1 flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums text-est-primary-ink">
                 {dados.painel ? `${dados.painel.cobertura.comDerivado}/${dados.painel.cobertura.total}` : "—"}
-                <span className="ml-1 text-xs font-medium text-muted-foreground">microtemas</span>
+                <span className="text-xs font-medium text-est-fg-soft">microtemas</span>
               </p>
             </div>
             <div className="flex flex-col justify-center gap-2">
               <button
                 type="button"
                 onClick={() => setVista("estudar")}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-3 py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-est-primary px-3 py-3 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90"
               >
                 <Play size={15} /> Estudar agora
               </button>
               <button
                 type="button"
                 onClick={() => setVista("simulado")}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-brand-gold/60 px-3 py-2.5 text-sm font-bold text-brand-primary hover:bg-brand-gold/10"
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-primary/60 px-3 py-3 text-sm font-bold text-est-primary-ink hover:bg-est-primary/10"
               >
                 <Timer size={15} /> Simulado
               </button>
@@ -436,12 +459,12 @@ export default function EstudosClient({ token, inicial }: Props) {
         {/* Filtros: busca + chips de origem (com contagem) e de tipo */}
         <div className="mt-6 space-y-3">
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-est-fg-soft" />
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar no enunciado…"
-              className="w-full rounded-xl border bg-card py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand-primary focus:outline-none"
+              className="min-h-11 w-full rounded-xl border border-est-border bg-est-card py-3 pl-9 pr-3 text-sm text-est-fg placeholder:text-est-fg-soft focus:border-est-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-est-primary focus-visible:ring-offset-2 focus-visible:ring-offset-est-bg"
             />
           </div>
 
@@ -457,8 +480,8 @@ export default function EstudosClient({ token, inicial }: Props) {
               className={cn(
                 "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
                 filtroOrigem === "todas"
-                  ? "bg-brand-primary text-white"
-                  : "border bg-card text-muted-foreground hover:text-brand-primary"
+                  ? "bg-est-primary text-est-primary-fg"
+                  : "border bg-est-card text-est-fg-soft hover:text-est-primary-ink"
               )}
             >
               Todas · {questoes.length}
@@ -474,8 +497,8 @@ export default function EstudosClient({ token, inicial }: Props) {
                   className={cn(
                     "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
                     filtroOrigem === origem
-                      ? "bg-brand-primary text-white"
-                      : "border bg-card text-muted-foreground hover:text-brand-primary"
+                      ? "bg-est-primary text-est-primary-fg"
+                      : "border bg-est-card text-est-fg-soft hover:text-est-primary-ink"
                   )}
                 >
                   {RÓTULOS_ORIGEM[origem]} · {contagemOrigem.get(origem)}
@@ -495,8 +518,8 @@ export default function EstudosClient({ token, inicial }: Props) {
               className={cn(
                 "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
                 filtroTipo === "todos"
-                  ? "bg-brand-gold text-brand-dark"
-                  : "border bg-card text-muted-foreground hover:text-brand-primary"
+                  ? "bg-est-primary text-est-primary-fg"
+                  : "border bg-est-card text-est-fg-soft hover:text-est-primary-ink"
               )}
             >
               Todos
@@ -512,8 +535,8 @@ export default function EstudosClient({ token, inicial }: Props) {
                   className={cn(
                     "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
                     filtroTipo === tipo
-                      ? "bg-brand-gold text-brand-dark"
-                      : "border bg-card text-muted-foreground hover:text-brand-primary"
+                      ? "bg-est-primary text-est-primary-fg"
+                      : "border bg-est-card text-est-fg-soft hover:text-est-primary-ink"
                   )}
                 >
                   {RÓTULOS_TIPO[tipo]}
@@ -536,19 +559,19 @@ export default function EstudosClient({ token, inicial }: Props) {
                   key={q.id}
                   id={`questao-${indice}`}
                   className={cn(
-                    "flex flex-col rounded-2xl border bg-card p-4 shadow-sm scroll-mt-24",
-                    respondida ? "border-brand-gold ring-1 ring-brand-gold/40" : "border-border"
+                    "flex flex-col rounded-2xl border bg-est-card p-4 shadow-sm scroll-mt-24",
+                    respondida ? "border-est-primary ring-1 ring-est-primary/40" : "border-est-border"
                   )}
                 >
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-full border border-brand-primary/20 bg-brand-primary/5 px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide text-brand-primary">
+                    <span className="rounded-full border border-est-primary/20 bg-est-primary/5 px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide text-est-primary-ink">
                       {RÓTULOS_ORIGEM[q.origem]}
                     </span>
-                    <span className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide text-brand-dark">
+                    <span className="rounded-full border border-est-primary/40 bg-est-primary/10 px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide text-est-fg">
                       {RÓTULOS_TIPO[q.tipo]}
                     </span>
                     {respondida && (
-                      <span className="ml-auto inline-flex items-center gap-1 text-[0.68rem] font-bold uppercase tracking-wide text-brand-gold">
+                      <span className="ml-auto inline-flex items-center gap-1 text-[0.68rem] font-bold uppercase tracking-wide text-est-primary-ink">
                         <Check size={12} /> Respondida
                       </span>
                     )}
@@ -557,7 +580,7 @@ export default function EstudosClient({ token, inicial }: Props) {
                         type="button"
                         onClick={() => setDicasAbertas((d) => ({ ...d, [q.id]: true }))}
                         aria-label={`Ver dica da questão ${indice + 1}`}
-                        className="ml-auto inline-flex items-center gap-1 rounded-full border border-brand-gold/60 px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wide text-brand-dark hover:bg-brand-gold/10"
+                        className="ml-auto inline-flex min-h-11 items-center gap-1 rounded-full border border-est-primary/60 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-wide text-est-fg hover:bg-est-primary/10"
                       >
                         <CircleHelp size={12} /> Dica
                       </button>
@@ -565,37 +588,37 @@ export default function EstudosClient({ token, inicial }: Props) {
                   </div>
 
                   {dica && dicaAberta && (
-                    <div className="mt-2.5 rounded-xl border border-brand-gold/50 bg-brand-gold/10 p-3 text-sm">
+                    <div className="mt-2.5 rounded-xl border border-est-primary/50 bg-est-primary/10 p-3 text-sm">
                       {dica.dica && (
-                        <p className="font-medium leading-relaxed text-foreground">{dica.dica}</p>
+                        <p className="font-medium leading-relaxed text-est-fg">{dica.dica}</p>
                       )}
                       {dica.microtema && (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 text-xs text-est-fg-soft">
                           Microtema do PD: {dica.microtema}
                         </p>
                       )}
                     </div>
                   )}
 
-                  <p className="mt-2.5 whitespace-pre-line text-sm font-semibold leading-relaxed text-foreground">
+                  <p className="mt-2.5 whitespace-pre-line text-sm font-semibold leading-relaxed text-est-fg">
                     {q.enunciado}
                   </p>
 
                   <div className="mt-3 flex flex-col gap-2">
                     {q.alternativas.map((alternativa, idx) => {
                       const eAEscolhida = escolhida === idx;
-                      let classe = "border-border bg-card hover:border-brand-accent";
+                      let classe = "border-est-border bg-est-card hover:border-est-primary/50";
                       if (!respondida) {
                         if (eAEscolhida)
-                          classe = "border-brand-primary bg-brand-primary/5 font-semibold ring-1 ring-brand-primary";
+                          classe = "border-est-primary bg-est-primary/5 font-semibold ring-1 ring-est-primary";
                       } else if (gabarito !== null && idx === gabarito) {
                         // Certa: verde em destaque.
-                        classe = "border-emerald-600 bg-emerald-50 font-semibold text-emerald-900";
+                        classe = "border-est-positive bg-est-positive-soft font-semibold text-est-positive";
                       } else {
                         // Erradas: vermelhas; a escolhida errada ganha anel forte.
                         classe = cn(
-                          "border-rose-300 bg-rose-50 text-rose-900",
-                          eAEscolhida && "ring-2 ring-rose-500 font-semibold"
+                          "border-est-negative/50 bg-est-negative-soft text-est-negative",
+                          eAEscolhida && "ring-2 ring-est-negative font-semibold"
                         );
                       }
                       return (
@@ -627,40 +650,40 @@ export default function EstudosClient({ token, inicial }: Props) {
                       type="button"
                       onClick={() => responder(q.id)}
                       disabled={escolhida === undefined}
-                      className="mt-3 self-start rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-dark disabled:opacity-40"
+                      className="mt-3 min-h-11 self-start rounded-xl bg-est-primary px-5 py-2.5 text-sm font-bold text-est-primary-fg transition-colors hover:bg-est-primary/90 disabled:opacity-40"
                     >
                       Responder
                     </button>
                   ) : (
                     <div className="mt-3 flex flex-col gap-3">
                       {q.gabaritoOficial !== undefined && q.gabaritoOficial !== null ? (
-                        <p className="text-sm font-bold text-emerald-700">
+                        <p className="text-sm font-bold text-est-positive">
                           Gabarito oficial: {letra(q.gabaritoOficial)}
                         </p>
                       ) : q.gabaritoIA !== undefined && q.gabaritoIA !== null ? (
-                        <p className="text-sm font-medium text-muted-foreground">
+                        <p className="text-sm font-medium text-est-fg-soft">
                           Gabarito IA — sem oficial: {letra(q.gabaritoIA)}
                         </p>
                       ) : (
-                        <p className="text-sm font-medium text-muted-foreground">
+                        <p className="text-sm font-medium text-est-fg-soft">
                           Sem gabarito (oficial ou IA) para esta questão.
                         </p>
                       )}
                       {q.explicacao && (
-                        <div className="rounded-lg bg-muted p-3 text-sm leading-relaxed text-foreground">
+                        <div className="rounded-lg bg-est-sunken p-3 text-sm leading-relaxed text-est-fg">
                           {q.explicacao}
                         </div>
                       )}
                       {q.origem === "gerada" &&
                         (rejeitadasLocal[q.id] ? (
-                          <p className="text-xs font-medium text-muted-foreground">
+                          <p className="text-xs font-medium text-est-fg-soft">
                             Questão reportada — sai do simulado e da fila de estudo.
                           </p>
                         ) : (
                           <button
                             type="button"
                             onClick={() => void rejeitarQuestao(q.id)}
-                            className="inline-flex items-center gap-1 self-start rounded-xl border px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50"
+                            className="inline-flex items-center gap-1 self-start rounded-xl border px-3 py-1.5 text-xs font-bold text-est-negative hover:bg-est-negative-soft"
                           >
                             <ThumbsDown size={13} /> Reportar questão gerada
                           </button>
@@ -669,14 +692,14 @@ export default function EstudosClient({ token, inicial }: Props) {
                         type="button"
                         onClick={() => irParaProxima(indice)}
                         disabled={indice === listaFiltrada.length - 1}
-                        className="self-start rounded-xl border px-4 py-2 text-sm font-bold text-brand-primary transition-colors hover:bg-muted disabled:opacity-40"
+                        className="self-start rounded-xl border px-4 py-2 text-sm font-bold text-est-primary-ink transition-colors hover:bg-est-sunken disabled:opacity-40"
                       >
                         Próxima
                       </button>
                     </div>
                   )}
 
-                  <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">
+                  <p className="mt-3 border-t pt-2 text-xs text-est-fg-soft">
                     {q.provenance.tipo} · {q.provenance.ref} · {q.provenance.data}
                   </p>
                 </article>
@@ -684,13 +707,13 @@ export default function EstudosClient({ token, inicial }: Props) {
             })}
           </div>
         ) : (
-          <div className="mt-6 rounded-2xl border border-dashed bg-card/60 px-6 py-14 text-center">
-            <p className="font-semibold text-brand-primary">
+          <div className="mt-6 rounded-2xl border border-dashed bg-est-card/60 px-6 py-14 text-center">
+            <p className="font-semibold text-est-primary-ink">
               {questoes.length === 0
                 ? "Nenhuma questão ingerida ainda"
                 : "Nenhuma questão com esses filtros"}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-est-fg-soft">
               {questoes.length === 0
                 ? "As questões aparecem aqui assim que a ingestão rodar no Zeno."
                 : "Ajuste a busca ou volte para “Todas”/“Todos”."}
@@ -701,16 +724,16 @@ export default function EstudosClient({ token, inicial }: Props) {
         {/* Painel de sessão — sticky bottom no mobile, acima da barra de
             contato do layout; estático no desktop (xl). */}
         <div className="sticky bottom-24 z-30 mt-8 xl:static">
-          <div className="theme-card-surface rounded-2xl p-4 shadow-xl shadow-brand-dark/10">
+          <div className="rounded-2xl border border-est-border bg-est-card p-4 shadow-xl shadow-est-fg/10">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-                <span className="font-bold text-brand-primary">
+                <span className="font-bold text-est-primary-ink">
                   Acertos: {sessao.acertos}/{sessao.respondidas}
                   {sessao.comDica > 0 && ` · ${sessao.comDica} com dica`}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-est-fg-soft">
                   Oficial:{" "}
-                  <strong className="text-foreground">
+                  <strong className="text-est-fg">
                     {sessao.nOficial < 1
                       ? "—"
                       : `${fmt1((sessao.acOficial / sessao.nOficial) * 100)}%`}
@@ -718,9 +741,9 @@ export default function EstudosClient({ token, inicial }: Props) {
                   (n={sessao.nOficial})
                   {sessao.nOficial >= 1 && ` ±${fmt1(margemBinomial(sessao.nOficial) * 100)}pp`}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-est-fg-soft">
                   Cursinho:{" "}
-                  <strong className="text-foreground">
+                  <strong className="text-est-fg">
                     {sessao.nDigitada < 1
                       ? "—"
                       : `${fmt1((sessao.acDigitada / sessao.nDigitada) * 100)}%`}
@@ -728,9 +751,9 @@ export default function EstudosClient({ token, inicial }: Props) {
                   (n={sessao.nDigitada})
                   {sessao.nDigitada >= 1 && ` ±${fmt1(margemBinomial(sessao.nDigitada) * 100)}pp`}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-est-fg-soft">
                   Gerada:{" "}
-                  <strong className="text-foreground">
+                  <strong className="text-est-fg">
                     {sessao.nGerada < 1
                       ? "—"
                       : `${fmt1((sessao.acGerada / sessao.nGerada) * 100)}%`}
@@ -742,7 +765,7 @@ export default function EstudosClient({ token, inicial }: Props) {
               <button
                 type="button"
                 onClick={reiniciarSessao}
-                className="inline-flex items-center gap-2 self-start rounded-xl border px-3 py-2 text-xs font-bold text-brand-primary transition-colors hover:bg-muted sm:self-auto"
+                className="inline-flex items-center gap-2 self-start rounded-xl border px-3 py-2 text-xs font-bold text-est-primary-ink transition-colors hover:bg-est-sunken sm:self-auto"
               >
                 <RefreshCw size={14} />
                 Reiniciar sessão

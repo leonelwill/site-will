@@ -187,15 +187,15 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
   // ── Sem composição (CFP: F3) ───────────────────────────────────────────
   if (!composicao || !montado) {
     return (
-      <div className="rounded-2xl border bg-card p-6 text-center shadow-sm">
-        <h2 className="text-lg font-bold text-brand-primary">Simulado ainda não disponível</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <div className="rounded-2xl border bg-est-card p-6 text-center shadow-sm">
+        <h2 className="text-lg font-bold text-est-primary-ink">Simulado ainda não disponível</h2>
+        <p className="mt-2 text-sm text-est-fg-soft">
           A composição oficial desta certificação entra na fase F3 (CFP: edital FPSB).
         </p>
         <button
           type="button"
           onClick={() => aoFechar(false)}
-          className="mt-5 rounded-xl border px-4 py-2.5 text-sm font-bold text-brand-primary hover:bg-muted"
+          className="mt-5 rounded-xl border px-4 py-2.5 text-sm font-bold text-est-primary-ink hover:bg-est-sunken"
         >
           Voltar
         </button>
@@ -206,16 +206,16 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
   // ── Pré: composição + lacunas + fonte (parcial declarado, nunca oculto) ─
   if (fase === "pre") {
     return (
-      <div className="rounded-2xl border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-brand-primary">
+      <div className="rounded-2xl border bg-est-card p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-est-primary-ink">
           Simulado {dados.curso.rotulo} · {composicao.total} questões · {composicao.minutos} min
         </h2>
-        <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+        <ul className="mt-3 space-y-1 text-sm text-est-fg-soft">
           {montado.porGrupo.map((g, i) => (
             <li key={i}>
               {g.tipos.map((t) => RÓTULOS_TIPO[t]).join(" ou ")}: {g.oficiais + g.digitadas + g.geradas}/{g.alvo}
               {(g.digitadas > 0 || g.geradas > 0) && (
-                <span className="ml-1 font-medium text-brand-gold">
+                <span className="ml-1 font-medium text-est-primary-ink">
                   ({g.oficiais} oficial · {g.digitadas} cursinho · {g.geradas} gerada)
                 </span>
               )}
@@ -223,13 +223,13 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
           ))}
         </ul>
         {montado.lacunas.length > 0 && (
-          <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
+          <p className="mt-3 flex items-start gap-2 rounded-xl border border-est-warning/40 bg-est-warning-soft p-3 text-xs font-medium text-est-warning">
             <AlertTriangle size={15} className="mt-0.5 shrink-0" />
             Banco com {montado.questoes.length} de {composicao.total} questões — simulado PARCIAL
             declarado (oficial em falta nas linhas acima).
           </p>
         )}
-        <p className="mt-3 text-xs text-muted-foreground">Fonte da composição: {composicao.fonte}</p>
+        <p className="mt-3 text-xs text-est-fg-soft">Fonte da composição: {composicao.fonte}</p>
         <button
           type="button"
           onClick={() => {
@@ -237,14 +237,14 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
             setFase("prova");
           }}
           disabled={montado.questoes.length === 0}
-          className="mt-5 w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-50"
+          className="mt-5 w-full rounded-xl bg-est-primary px-4 py-3 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90 disabled:opacity-50"
         >
           {montado.questoes.length === 0 ? "Banco vazio — ingira questões primeiro" : "Começar (relógio corre)"}
         </button>
         <button
           type="button"
           onClick={() => aoFechar(false)}
-          className="mt-2 w-full rounded-xl border px-4 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted"
+          className="mt-2 w-full rounded-xl border px-4 py-2.5 text-sm font-bold text-est-fg-soft hover:bg-est-sunken"
         >
           Voltar
         </button>
@@ -283,52 +283,52 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
 
     return (
       <div className="space-y-4">
-        <div className="rounded-2xl border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-brand-primary">Resultado</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
+        <div className="rounded-2xl border bg-est-card p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-est-primary-ink">Resultado</h2>
+          <p className="mt-1 text-xs text-est-fg-soft">
             {montado.questoes.length} questões · {minutosConsumidos} min de relógio
             {semResposta > 0 && ` · ${semResposta} sem resposta`}
           </p>
           <div className="mt-4 space-y-3">
-            <div className="rounded-xl border bg-background p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Oficial</p>
-              <p className="mt-1 text-lg font-bold text-foreground">
+            <div className="rounded-xl border bg-est-bg p-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-est-fg-soft">Oficial</p>
+              <p className="mt-1 text-lg font-bold text-est-fg">
                 {oficial.texto ?? "—"}{" "}
-                <span className="text-xs font-medium text-muted-foreground">(n={oficial.n})</span>
+                <span className="text-xs font-medium text-est-fg-soft">(n={oficial.n})</span>
               </p>
             </div>
-            <div className="rounded-xl border bg-background p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            <div className="rounded-xl border bg-est-bg p-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-est-fg-soft">
                 Cursinho — contagem separada, nunca somada
               </p>
-              <p className="mt-1 text-lg font-bold text-foreground">
+              <p className="mt-1 text-lg font-bold text-est-fg">
                 {porOrigem("digitada").texto ?? "—"}{" "}
-                <span className="text-xs font-medium text-muted-foreground">(n={porOrigem("digitada").n})</span>
+                <span className="text-xs font-medium text-est-fg-soft">(n={porOrigem("digitada").n})</span>
               </p>
             </div>
-            <div className="rounded-xl border bg-background p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            <div className="rounded-xl border bg-est-bg p-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-est-fg-soft">
                 Gerada por IA — contagem separada, nunca somada
               </p>
-              <p className="mt-1 text-lg font-bold text-foreground">
+              <p className="mt-1 text-lg font-bold text-est-fg">
                 {gerada.texto ?? "—"}{" "}
-                <span className="text-xs font-medium text-muted-foreground">(n={gerada.n})</span>
+                <span className="text-xs font-medium text-est-fg-soft">(n={gerada.n})</span>
               </p>
             </div>
           </div>
           {montado.lacunas.length > 0 && (
-            <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
+            <p className="mt-3 rounded-xl border border-est-warning/40 bg-est-warning-soft p-3 text-xs font-medium text-est-warning">
               Simulado PARCIAL: {montado.questoes.length}/{composicao.total} questões da composição
               oficial. Fonte: {composicao.fonte}
             </p>
           )}
         </div>
         {erradas.length > 0 && (
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-brand-primary">
+          <div className="rounded-2xl border bg-est-card p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-est-primary-ink">
               Revisão das erradas ({erradas.length})
             </h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-est-fg-soft">
               Toque para abrir: gabarito + explicação de cada erro.
             </p>
             <div className="mt-3 space-y-2">
@@ -338,10 +338,10 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
                 return (
                   <details
                     key={q.id}
-                    className="rounded-xl border bg-background open:border-brand-gold/60"
+                    className="rounded-xl border bg-est-bg open:border-est-primary/60"
                   >
-                    <summary className="cursor-pointer list-none p-3 text-sm font-semibold text-foreground marker:hidden">
-                      <span className="mr-1.5 font-mono text-xs font-bold text-brand-gold">
+                    <summary className="cursor-pointer list-none p-3 text-sm font-semibold text-est-fg marker:hidden">
+                      <span className="mr-1.5 font-mono text-xs font-bold text-est-primary-ink">
                         {i + 1}.
                       </span>
                       {q.enunciado.length > 110
@@ -350,30 +350,30 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
                     </summary>
                     <div className="space-y-2 border-t p-3 pt-3">
                       <p className="text-sm">
-                        <span className="font-bold text-rose-700">
+                        <span className="font-bold text-est-negative">
                           Sua resposta: {letra(esc)}
                         </span>
-                        <span className="ml-2 text-muted-foreground">
+                        <span className="ml-2 text-est-fg-soft">
                           {q.alternativas[esc]}
                         </span>
                       </p>
                       <p className="text-sm">
-                        <span className="font-bold text-emerald-700">
+                        <span className="font-bold text-est-positive">
                           {q.gabaritoOficial !== undefined && q.gabaritoOficial !== null
                             ? "Gabarito oficial: "
                             : "Gabarito IA — sem oficial: "}
                           {letra(gab)}
                         </span>
-                        <span className="ml-2 text-muted-foreground">
+                        <span className="ml-2 text-est-fg-soft">
                           {q.alternativas[gab]}
                         </span>
                       </p>
                       {q.explicacao ? (
-                        <div className="rounded-lg bg-muted p-3 text-sm leading-relaxed text-foreground">
+                        <div className="rounded-lg bg-est-sunken p-3 text-sm leading-relaxed text-est-fg">
                           {q.explicacao}
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-est-fg-soft">
                           Sem explicação disponível para esta questão.
                         </p>
                       )}
@@ -385,7 +385,7 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
           </div>
         )}
         {erroSalvar && (
-          <p className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-700">
+          <p className="rounded-xl border border-est-negative/40 bg-est-negative-soft p-3 text-sm font-medium text-est-negative">
             {erroSalvar}
           </p>
         )}
@@ -393,7 +393,7 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
           <button
             type="button"
             onClick={() => aoFechar(salvo)}
-            className="flex-1 rounded-xl border px-4 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted"
+            className="flex-1 rounded-xl border px-4 py-2.5 text-sm font-bold text-est-fg-soft hover:bg-est-sunken"
           >
             {salvo ? "Voltar" : "Sair sem gravar"}
           </button>
@@ -401,7 +401,7 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
             type="button"
             onClick={gravar}
             disabled={salvando || salvo}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-est-primary px-4 py-2.5 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90 disabled:opacity-50"
           >
             <RotateCcw size={15} /> {salvo ? "Gravado" : salvando ? "Gravando…" : "Gravar sessão"}
           </button>
@@ -418,14 +418,14 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
-        <p className="text-sm font-bold text-brand-primary">
+      <div className="sticky top-0 z-10 -mx-4 flex items-center justify-between gap-2 border-b bg-est-bg/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+        <p className="text-sm font-bold text-est-primary-ink">
           {Math.min(indice + 1, montado.questoes.length)}/{montado.questoes.length}
         </p>
         <p
           className={cn(
             "flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-mono text-sm font-bold",
-            restanteSeg < 300 ? "bg-rose-100 text-rose-700" : "bg-muted text-foreground"
+            restanteSeg < 300 ? "bg-est-negative-soft text-est-negative" : "bg-est-sunken text-est-fg"
           )}
           suppressHydrationWarning
         >
@@ -434,16 +434,16 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
       </div>
 
       {!terminou && q && (
-        <article className="rounded-2xl border bg-card p-5 shadow-sm">
+        <article className="rounded-2xl border bg-est-card p-5 shadow-sm">
           <div className="mb-2 flex flex-wrap gap-1.5 text-[10px] font-bold uppercase tracking-wide">
-            <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-brand-primary">
+            <span className="rounded-full bg-est-primary/10 px-2 py-0.5 text-est-primary-ink">
               {RÓTULOS_ORIGEM[q.origem]}
             </span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+            <span className="rounded-full bg-est-sunken px-2 py-0.5 text-est-fg-soft">
               {RÓTULOS_TIPO[q.tipo]}
             </span>
           </div>
-          <p className="text-sm font-semibold leading-relaxed text-foreground">{q.enunciado}</p>
+          <p className="text-sm font-semibold leading-relaxed text-est-fg">{q.enunciado}</p>
           <div className="mt-3 space-y-2">
             {q.alternativas.map((alt, i) => (
               <button
@@ -454,14 +454,14 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
                 className={cn(
                   "flex w-full items-start gap-2.5 rounded-xl border p-3 text-left text-sm",
                   escolhas[q.id] === i
-                    ? "border-brand-primary bg-brand-primary/5 font-semibold"
-                    : "border-border bg-background hover:border-brand-primary/50"
+                    ? "border-est-primary bg-est-primary/5 font-semibold"
+                    : "border-est-border bg-est-bg hover:border-est-primary/50"
                 )}
               >
-                <span className="font-mono text-xs font-bold text-brand-gold">
+                <span className="font-mono text-xs font-bold text-est-primary-ink">
                   {String.fromCharCode(65 + i)}
                 </span>
-                <span className="text-foreground">{alt}</span>
+                <span className="text-est-fg">{alt}</span>
               </button>
             ))}
           </div>
@@ -470,7 +470,7 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
               <button
                 type="button"
                 onClick={() => setIndice((i) => i - 1)}
-                className="rounded-xl border px-4 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted"
+                className="rounded-xl border px-4 py-2.5 text-sm font-bold text-est-fg-soft hover:bg-est-sunken"
               >
                 Anterior
               </button>
@@ -478,7 +478,7 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
             <button
               type="button"
               onClick={() => (indice + 1 >= montado.questoes.length ? finalizar() : setIndice((i) => i + 1))}
-              className="flex-1 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
+              className="flex-1 rounded-xl bg-est-primary px-4 py-2.5 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90"
             >
               {indice + 1 >= montado.questoes.length ? "Finalizar" : "Próxima"}
             </button>
@@ -490,7 +490,7 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
         <button
           type="button"
           onClick={finalizar}
-          className="w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white hover:bg-brand-dark"
+          className="w-full rounded-xl bg-est-primary px-4 py-3 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90"
         >
           Ver resultado
         </button>

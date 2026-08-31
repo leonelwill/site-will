@@ -193,6 +193,50 @@ export const RÓTULOS_TIPO: Record<TipoQuestao, string> = {
   arvore: "Árvore de decisão",
 };
 
+// ── Hub: a vitrine de cursos (porta única do link) ──────────────────────────
+
+/**
+ * Um card da vitrine. Sem PIN vem só identidade + contagens (Carta 6/7); com
+ * PIN entram `publicToken` — que a tela usa para abrir o curso sem pedir o PIN
+ * de novo — e a agenda.
+ */
+export interface CursoNoHub extends CursoInfo {
+  cards: number;
+  fonteCurso?: string;
+  programaVersao?: string;
+  publicToken?: string;
+}
+
+export interface Hub {
+  cursos: CursoNoHub[];
+  bloqueado: boolean;
+}
+
+/**
+ * Vitrine do hub (GET /api/estudos/hub/<token>). Sem PIN o Zeno responde 200
+ * com os cards bloqueados — é o primeiro load legítimo, não erro; PIN ENVIADO e
+ * errado é 401.
+ */
+export async function buscarHub(token: string, pin?: string): Promise<Hub> {
+  let resp: Response;
+  try {
+    resp = await fetch(`${ZENO_CLOUD_URL}/api/estudos/hub/${encodeURIComponent(token)}`, {
+      cache: "no-store",
+      headers: pin ? { "x-pin-leitura": pin } : undefined,
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw new EstudoApiError("Zeno indisponível (timeout ou rede)", 0);
+  }
+
+  const corpo = (await resp.json().catch(() => null)) as (Hub & { erro?: string }) | null;
+  if (resp.ok) {
+    if (corpo && Array.isArray(corpo.cursos)) return corpo;
+    throw new EstudoApiError(`Zeno respondeu ${resp.status} com corpo inválido`, resp.status);
+  }
+  throw new EstudoApiError(`Zeno respondeu ${resp.status}`, resp.status, corpo?.erro);
+}
+
 // ── Busca ───────────────────────────────────────────────────────────────────
 
 /**
