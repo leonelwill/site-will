@@ -284,22 +284,22 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
   // ── Resumo pós-POST ────────────────────────────────────────────────────
   if (resumo) {
     return (
-      <div className="rounded-2xl border bg-card p-6 text-center shadow-sm">
-        <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+      <div className="rounded-2xl border bg-est-card p-6 text-center shadow-sm">
+        <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-est-positive-soft text-est-positive">
           <Check size={24} />
         </span>
-        <h2 className="mt-4 text-lg font-bold text-brand-primary">Sessão gravada</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h2 className="mt-4 text-lg font-bold text-est-primary-ink">Sessão gravada</h2>
+        <p className="mt-2 text-sm text-est-fg-soft">
           {resumo.itens} itens · {resumo.acertos} certos · {resumo.minutos} min (competência de hoje)
           {resumo.comDica > 0 && ` · ${resumo.comDica} com dica`}
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs text-est-fg-soft">
           Revisões agendadas — nenhuma além da véspera da prova.
         </p>
         <button
           type="button"
           onClick={() => aoFechar(true)}
-          className="mt-5 w-full rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white hover:bg-brand-dark"
+          className="mt-5 w-full rounded-xl bg-est-primary px-4 py-3 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90"
         >
           Voltar
         </button>
@@ -309,15 +309,15 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
 
   if (total === 0) {
     return (
-      <div className="rounded-2xl border bg-card p-6 text-center shadow-sm">
-        <h2 className="text-lg font-bold text-brand-primary">Nada vencido hoje</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <div className="rounded-2xl border bg-est-card p-6 text-center shadow-sm">
+        <h2 className="text-lg font-bold text-est-primary-ink">Nada vencido hoje</h2>
+        <p className="mt-2 text-sm text-est-fg-soft">
           Sem revisões vencidas, erradas pendentes ou cards novos dentro do orçamento.
         </p>
         <button
           type="button"
           onClick={() => aoFechar(false)}
-          className="mt-5 rounded-xl border px-4 py-2.5 text-sm font-bold text-brand-primary hover:bg-muted"
+          className="mt-5 rounded-xl border px-4 py-2.5 text-sm font-bold text-est-primary-ink hover:bg-est-sunken"
         >
           Voltar
         </button>
@@ -340,17 +340,17 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
     <div className="space-y-4">
       {/* Progresso + orçamento */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-bold text-brand-primary">
+        <p className="text-sm font-bold text-est-primary-ink">
           {respondidos}/{total} itens · {fila.minutos} min estimados
-          {retomado && <span className="ml-2 text-xs font-medium text-brand-gold">retomada</span>}
+          {retomado && <span className="ml-2 text-xs font-medium text-est-primary-ink">retomada</span>}
         </p>
         {!retomado && respondidos === 0 && (
-          <label className="flex items-center gap-1 text-xs text-muted-foreground">
+          <label className="flex items-center gap-1 text-xs text-est-fg-soft">
             Orçamento:
             <select
               value={orcamento}
               onChange={(e) => setOrcamento(Number(e.target.value))}
-              className="rounded-lg border bg-card px-2 py-1 text-xs font-bold text-foreground"
+              className="rounded-lg border bg-est-card px-2 py-1 text-xs font-bold text-est-fg"
             >
               {ORCAMENTOS.map((m) => (
                 <option key={m} value={m}>
@@ -361,45 +361,45 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
           </label>
         )}
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-est-sunken">
         <div
-          className="h-full rounded-full bg-brand-gold transition-all"
+          className="h-full rounded-full bg-est-primary transition-[width] duration-200 ease-out"
           style={{ width: `${total ? (respondidos / total) * 100 : 0}%` }}
         />
       </div>
 
       {/* Item atual */}
       {cardAtual && (
-        <article className="rounded-2xl border bg-card p-5 shadow-sm">
+        <article className="rounded-2xl border bg-est-card p-5 shadow-sm">
           {!versoAberto ? (
             <>
-              <p className="text-sm font-semibold leading-relaxed text-foreground">{cardAtual.frente}</p>
+              <p className="text-sm font-semibold leading-relaxed text-est-fg">{cardAtual.frente}</p>
               <button
                 type="button"
                 onClick={() =>
                   setVersosAbertos((s) => new Set(s).add(cardAtual.id))
                 }
-                className="mt-4 w-full rounded-xl border border-brand-gold/60 px-4 py-2.5 text-sm font-bold text-brand-primary hover:bg-brand-gold/10"
+                className="mt-4 w-full rounded-xl border border-est-primary/60 px-4 py-2.5 text-sm font-bold text-est-primary-ink hover:bg-est-primary/10"
               >
                 Virar card
               </button>
             </>
           ) : (
             <>
-              <p className="text-xs font-medium text-muted-foreground">{cardAtual.frente}</p>
-              <p className="mt-2 text-sm font-semibold leading-relaxed text-foreground">{cardAtual.verso}</p>
+              <p className="text-xs font-medium text-est-fg-soft">{cardAtual.frente}</p>
+              <p className="mt-2 text-sm font-semibold leading-relaxed text-est-fg">{cardAtual.verso}</p>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => registrar(cardAtual.id, "errado")}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-bold text-rose-700 hover:bg-rose-100"
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-est-negative/50 bg-est-negative-soft px-4 py-2.5 text-sm font-bold text-est-negative hover:bg-est-negative-soft"
                 >
                   <X size={15} /> Errei
                 </button>
                 <button
                   type="button"
                   onClick={() => registrar(cardAtual.id, "certo")}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-100"
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-est-positive/50 bg-est-positive-soft px-4 py-2.5 text-sm font-bold text-est-positive hover:bg-est-positive-soft"
                 >
                   <Check size={15} /> Acertei
                 </button>
@@ -410,12 +410,12 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
       )}
 
       {questaoAtual && (
-        <article className="rounded-2xl border bg-card p-5 shadow-sm">
+        <article className="rounded-2xl border bg-est-card p-5 shadow-sm">
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
-            <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-brand-primary">
+            <span className="rounded-full bg-est-primary/10 px-2 py-0.5 text-est-primary-ink">
               {RÓTULOS_ORIGEM[questaoAtual.origem]}
             </span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+            <span className="rounded-full bg-est-sunken px-2 py-0.5 text-est-fg-soft">
               {RÓTULOS_TIPO[questaoAtual.tipo]}
             </span>
             {(() => {
@@ -428,7 +428,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
                 <button
                   type="button"
                   onClick={() => marcarDica(questaoAtual.id)}
-                  className="ml-auto inline-flex items-center gap-1 rounded-full border border-brand-gold/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark hover:bg-brand-gold/10"
+                  className="ml-auto inline-flex min-h-11 items-center gap-1 rounded-full border border-est-primary/60 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-est-fg hover:bg-est-primary/10"
                 >
                   <CircleHelp size={12} /> Dica
                 </button>
@@ -439,19 +439,19 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
             const dica = dicaDaQuestao(questaoAtual, dados.microtemas);
             if (!dica || !dicaAberta) return null;
             return (
-              <div className="mb-3 rounded-xl border border-brand-gold/50 bg-brand-gold/10 p-3 text-sm">
+              <div className="mb-3 rounded-xl border border-est-primary/50 bg-est-primary/10 p-3 text-sm">
                 {dica.dica && (
-                  <p className="font-medium leading-relaxed text-foreground">{dica.dica}</p>
+                  <p className="font-medium leading-relaxed text-est-fg">{dica.dica}</p>
                 )}
                 {dica.microtema && (
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-est-fg-soft">
                     Microtema do PD: {dica.microtema}
                   </p>
                 )}
               </div>
             );
           })()}
-          <p className="text-sm font-semibold leading-relaxed text-foreground">{questaoAtual.enunciado}</p>
+          <p className="text-sm font-semibold leading-relaxed text-est-fg">{questaoAtual.enunciado}</p>
           <div className="mt-3 space-y-2">
             {questaoAtual.alternativas.map((alt, i) => {
               const eAEscolhida = feedbackAtivo
@@ -460,14 +460,14 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
               const classe = feedbackAtivo
                 ? feedback.gabarito === i
                   ? // Certa: verde em destaque.
-                    "border-emerald-600 bg-emerald-50 font-semibold text-emerald-900"
+                    "border-est-positive bg-est-positive-soft font-semibold text-est-positive"
                   : feedback.escolhida === i
                     ? // A escolhida errada: vermelha com anel forte.
-                      "border-rose-300 bg-rose-50 text-rose-900 ring-2 ring-rose-500 font-semibold"
-                    : "border-border bg-card text-foreground opacity-70"
+                      "border-est-negative/50 bg-est-negative-soft text-est-negative ring-2 ring-est-negative font-semibold"
+                    : "border-est-border bg-est-card text-est-fg opacity-70"
                 : selecaoQuestao === i
-                  ? "border-brand-primary bg-brand-primary/5 font-semibold"
-                  : "border-border bg-background hover:border-brand-primary/50";
+                  ? "border-est-primary bg-est-primary/5 font-semibold"
+                  : "border-est-border bg-est-bg hover:border-est-primary/50";
               return (
                 <button
                   key={i}
@@ -480,10 +480,10 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
                     classe
                   )}
                 >
-                  <span className="font-mono text-xs font-bold text-brand-gold">
+                  <span className="font-mono text-xs font-bold text-est-primary-ink">
                     {String.fromCharCode(65 + i)}
                   </span>
-                  <span className="text-foreground">{alt}</span>
+                  <span className="text-est-fg">{alt}</span>
                 </button>
               );
             })}
@@ -493,20 +493,20 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
               className={cn(
                 "mt-4 rounded-xl border p-4",
                 feedback.resultado === "certo"
-                  ? "border-emerald-200 bg-emerald-50"
+                  ? "border-est-positive/40 bg-est-positive-soft"
                   : feedback.resultado === "errado"
-                    ? "border-rose-200 bg-rose-50"
-                    : "border-border bg-muted"
+                    ? "border-est-negative/40 bg-est-negative-soft"
+                    : "border-est-border bg-est-sunken"
               )}
             >
               <p
                 className={cn(
                   "flex items-center gap-1.5 text-sm font-bold",
                   feedback.resultado === "certo"
-                    ? "text-emerald-700"
+                    ? "text-est-positive"
                     : feedback.resultado === "errado"
-                      ? "text-rose-700"
-                      : "text-muted-foreground"
+                      ? "text-est-negative"
+                      : "text-est-fg-soft"
                 )}
               >
                 {feedback.resultado === "certo" && <><Check size={16} /> Você acertou</>}
@@ -514,7 +514,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
                 {feedback.resultado === "nulo" && <>Sem gabarito — resposta registrada como nula</>}
               </p>
               {feedback.gabarito !== null && (
-                <p className="mt-1.5 text-sm font-bold text-emerald-700">
+                <p className="mt-1.5 text-sm font-bold text-est-positive">
                   {feedback.gabaritoEhOficial
                     ? "Gabarito oficial: "
                     : "Gabarito IA — sem oficial: "}
@@ -522,23 +522,23 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
                 </p>
               )}
               {feedback.resultado === "errado" && (
-                <p className="mt-0.5 text-sm font-medium text-rose-700">
+                <p className="mt-0.5 text-sm font-medium text-est-negative">
                   Sua resposta: {String.fromCharCode(65 + feedback.escolhida)}
                 </p>
               )}
               {feedback.resultado !== "nulo" && questaoAtual.explicacao && (
-                <div className="mt-2.5 rounded-lg bg-card p-3 text-sm leading-relaxed text-foreground">
+                <div className="mt-2.5 rounded-lg bg-est-card p-3 text-sm leading-relaxed text-est-fg">
                   {questaoAtual.explicacao}
                 </div>
               )}
               {feedback.resultado === "errado" && !questaoAtual.explicacao && (
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-2 text-xs text-est-fg-soft">
                   Sem explicação disponível para esta questão.
                 </p>
               )}
               {questaoAtual.origem === "gerada" &&
                 (rejeitadaLocal[questaoAtual.id] ? (
-                  <p className="mt-2 text-xs font-medium text-muted-foreground">
+                  <p className="mt-2 text-xs font-medium text-est-fg-soft">
                     Questão reportada — sai do simulado e da fila.
                   </p>
                 ) : (
@@ -551,7 +551,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
                           /* silencioso: fica disponível para tentar de novo */
                         });
                     }}
-                    className="mt-2 inline-flex items-center gap-1 self-start text-xs font-bold text-rose-700 hover:underline"
+                    className="mt-2 inline-flex items-center gap-1 self-start text-xs font-bold text-est-negative hover:underline"
                   >
                     <ThumbsDown size={13} /> Reportar questão gerada
                   </button>
@@ -561,7 +561,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
                 onClick={() =>
                   indice + 1 >= total ? finalizar() : avancarFeedback()
                 }
-                className="mt-3 w-full rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
+                className="mt-3 w-full rounded-xl bg-est-primary px-4 py-2.5 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90"
               >
                 {indice + 1 >= total ? "Última — gravar sessão" : "Próxima"}
               </button>
@@ -590,7 +590,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
                   // Registra SEM avançar: o avanço é decisão do "Próxima".
                   registrar(questaoAtual.id, resultado, false);
                 }}
-                className="mt-4 w-full rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
+                className="mt-4 w-full rounded-xl bg-est-primary px-4 py-2.5 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90"
               >
                 Responder
               </button>
@@ -600,7 +600,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
       )}
 
       {erroSalvar && (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-700">
+        <p className="rounded-xl border border-est-negative/40 bg-est-negative-soft p-3 text-sm font-medium text-est-negative">
           {erroSalvar}
         </p>
       )}
@@ -609,7 +609,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
         <button
           type="button"
           onClick={() => aoFechar(false)}
-          className="flex-1 rounded-xl border px-4 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted"
+          className="flex-1 rounded-xl border px-4 py-2.5 text-sm font-bold text-est-fg-soft hover:bg-est-sunken"
         >
           Pausar
         </button>
@@ -617,7 +617,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
           type="button"
           onClick={finalizar}
           disabled={salvando}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-50"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-est-primary px-4 py-2.5 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90 disabled:opacity-50"
         >
           <RotateCcw size={15} /> {salvando ? "Gravando…" : "Finalizar e gravar"}
         </button>

@@ -68,6 +68,28 @@
   --color-border: var(--border);
   --font-sans: var(--font-montserrat);
   --font-display: var(--font-montserrat);
+
+  /* Escopo `.estudos` (Concept) — os valores vivem no bloco `.estudos` no fim
+     deste arquivo; aqui só o registro para o Tailwind emitir as utilities
+     (bg-est-card, text-est-fg-soft, border-est-border…). */
+  --color-est-bg: var(--est-bg);
+  --color-est-card: var(--est-card);
+  --color-est-fg: var(--est-fg);
+  --color-est-fg-soft: var(--est-fg-soft);
+  --color-est-fg-faint: var(--est-fg-faint);
+  --color-est-primary: var(--est-primary);
+  --color-est-primary-ink: var(--est-primary-ink);
+  --color-est-primary-fg: var(--est-primary-fg);
+  --color-est-primary-soft: var(--est-primary-soft);
+  --color-est-border: var(--est-border);
+  --color-est-border-strong: var(--est-border-strong);
+  --color-est-sunken: var(--est-sunken);
+  --color-est-positive: var(--est-positive);
+  --color-est-positive-soft: var(--est-positive-soft);
+  --color-est-negative: var(--est-negative);
+  --color-est-negative-soft: var(--est-negative-soft);
+  --color-est-warning: var(--est-warning);
+  --color-est-warning-soft: var(--est-warning-soft);
 }
 
 /* Smooth scrolling */
@@ -258,4 +280,103 @@ body {
 .section-divider {
   background: linear-gradient(90deg, transparent 0%, #253164 50%, transparent 100%);
   height: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESCOPO `.estudos` — linguagem visual do Zeno Concept
+   ═══════════════════════════════════════════════════════════════════════════
+   A área de estudo (/est/<token>) é ferramenta do William, não peça de marca:
+   veste o Concept do Zeno (azul-gelo + azul vivo no claro, Tokyo Night no
+   escuro) em vez do dourado institucional do site — decisão dele, 30/08/2026.
+   Valores copiados de zeno_cloud/src/app.css (html[data-theme='concept'] e
+   .concept-night); repos separados, então é espelho declarado, não import.
+
+   TODO token existe nos DOIS temas: nada de `var(--x, #fallback)`, que esconde
+   token inexistente e vira cor fixa em todo tema (pitfall da casa).
+
+   As 4 cores de certificação são medidas contra as superfícies em que o
+   emblema assenta (card e fundo): pior caso 4,97:1 no claro, 5,78:1 no
+   escuro — todas acima dos 4,5 da WCAG AA.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.estudos {
+  --est-bg: #eaf0fb;
+  --est-card: #ffffff;
+  --est-fg: #16294a;
+  --est-fg-soft: #4d6182;
+  /* O terciário do Concept (#7e91af) mede 3,2:1 sobre o card e 2,8:1 sobre o
+     fundo — reprova a WCAG AA, e é justo nele que mora a fonte do curso. Um
+     degrau mais escuro passa nas DUAS superfícies (5,39 e 4,71) e continua
+     distinguível do secundário. */
+  --est-fg-faint: #5c6b85;
+  --est-primary: #146bf5;
+  /* Azul de TEXTO e ícone. O #146bf5 é ótimo como preenchimento (branco sobre
+     ele dá 4,72), mas como texto sobre o fundo azul-gelo cai a 4,12 e reprova.
+     Este é o `--color-primary-hover` do próprio Concept: 6,25 sobre o card,
+     5,46 sobre o fundo. Preenchimento usa `--est-primary`; tinta usa este. */
+  --est-primary-ink: #0a58d4;
+  --est-primary-fg: #ffffff;
+  --est-primary-soft: #e7f0fe;
+  --est-border: #d2dbe8;
+  --est-border-strong: #c4d2e3;
+  --est-sunken: #eef3fc;
+  --est-positive: #0e9f6e;
+  --est-positive-soft: rgba(14, 159, 110, 0.1);
+  --est-negative: #e02d4c;
+  --est-negative-soft: rgba(224, 45, 76, 0.08);
+  --est-warning: #c77e0a;
+  --est-warning-soft: rgba(199, 126, 10, 0.12);
+
+  --est-cert-cpa: #0a58d4;
+  --est-cert-cpro-i: #0e7d90;
+  --est-cert-cpro-r: #6d3fd4;
+  --est-cert-cfp: #b8365f;
+
+  background: var(--est-bg);
+  color: var(--est-fg);
+
+  /* A navbar do site é `position: fixed` (81px medidos em 360px) e o <main> do
+     layout NÃO reserva espaço para ela: sem esta folga o <h1> nasce debaixo do
+     header. Mora aqui, e não num `pt-*` de cada <section>, para que a próxima
+     tela de estudo nasça certa sem ninguém precisar lembrar. */
+  padding-top: 6.5rem;
+  padding-bottom: 2.5rem;
+}
+
+/* A StickyContactBar do site é `fixed` no rodapé até o breakpoint xl (89px
+   medidos em 360px). Sem esta folga o botão "Estudar" do ÚLTIMO card fica
+   atrás dela quando a lista termina na dobra — o `pb-20` do <body> cobre o fim
+   do documento, não o fim da lista. */
+@media (max-width: 1279px) {
+  .estudos {
+    padding-bottom: 7.5rem;
+  }
+}
+
+:root[data-site-theme="dark"] .estudos {
+  --est-bg: #1a1b26;
+  --est-card: #24283b;
+  --est-fg: #f2f4fa;
+  --est-fg-soft: #c4ccec;
+  /* No escuro a rampa do Tokyo Night já passa folgado (terciário 6,61:1 sobre o
+     card), então tinta e preenchimento podem ser o mesmo azul. */
+  --est-fg-faint: #a5aecd;
+  --est-primary: #7aa2f7;
+  --est-primary-ink: #7aa2f7;
+  --est-primary-fg: #1a1b26;
+  --est-primary-soft: rgba(122, 162, 247, 0.14);
+  --est-border: #414868;
+  --est-border-strong: #545c7e;
+  --est-sunken: #16161e;
+  --est-positive: #4ade80;
+  --est-positive-soft: rgba(74, 222, 128, 0.12);
+  --est-negative: #f7768e;
+  --est-negative-soft: rgba(247, 118, 142, 0.12);
+  --est-warning: #e0af68;
+  --est-warning-soft: rgba(224, 175, 104, 0.14);
+
+  --est-cert-cpa: #7aa2f7;
+  --est-cert-cpro-i: #7dcfff;
+  --est-cert-cpro-r: #bb9af7;
+  --est-cert-cfp: #ff9e9e;
 }
