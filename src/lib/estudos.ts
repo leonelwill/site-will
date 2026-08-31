@@ -96,6 +96,48 @@ export interface ReviewCard {
   repeticoes: number;
 }
 
+/** Uma questão já respondida em alguma sessão GRAVADA (não o estado da tela). */
+export interface ProgressoQuestao {
+  questaoId: string;
+  acertos: number;
+  erros: number;
+  /** Data pura ISO da última resposta. */
+  ultimaEm?: string;
+}
+
+// ── Menu de temas: árvore do PD montada no Zeno ────────────────────────────
+// O agrupamento pela numeração oficial do título é decisão do backend
+// (zeno_cloud/src/lib/estudos/temas.ts) e chega pronto — reimplementá-lo aqui
+// seria a mesma regra em dois repos, divergindo no primeiro ajuste.
+
+export interface MicrotemaNaArvore {
+  id: string;
+  titulo: string;
+  /** Numeração oficial do PD ("2.1.4") — é como a apostila indexa. */
+  numero: string;
+  questoes: number;
+  cards: number;
+}
+
+export interface GrupoDeTemas {
+  numero: string;
+  titulo: string;
+  microtemas: MicrotemaNaArvore[];
+  questoes: number;
+  cards: number;
+  cobertos: number;
+}
+
+export interface ModuloDeTemas {
+  id: string;
+  titulo: string;
+  grupos: GrupoDeTemas[];
+  questoes: number;
+  cards: number;
+  cobertos: number;
+  total: number;
+}
+
 export interface PainelHome {
   diasParaProva: number | null;
   vencidasHoje: number;
@@ -141,6 +183,10 @@ export interface EstudoCompleto {
   painel?: PainelHome;
   microtemaMenosCoberto?: string | null;
   erradasRecentes?: { questaoId: string }[];
+  /** Questões já respondidas em sessões gravadas — alimenta o filtro homônimo. */
+  respondidas?: ProgressoQuestao[];
+  /** Árvore de temas (módulo → grupo → microtema) — alimenta o menu de temas. */
+  arvoreTemas?: ModuloDeTemas[];
   /** Títulos dos microtemas do PD (id → título) — alimenta a dica de fallback. */
   microtemas?: Record<string, string>;
   bloqueado: false;
