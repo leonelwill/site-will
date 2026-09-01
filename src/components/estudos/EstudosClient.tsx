@@ -449,6 +449,13 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
                 {dados.painel ? `${dados.painel.cobertura.comDerivado}/${dados.painel.cobertura.total}` : "—"}
                 <span className="text-xs font-medium text-est-fg-soft">microtemas</span>
               </p>
+              {/* Carta 3: cobertura sustentada só por questão gerada é declarada
+                  ao lado do número, não somada em silêncio a material validado. */}
+              {!!dados.painel?.cobertura.soGerada && (
+                <p className="mt-0.5 text-[0.7rem] font-medium text-est-warning">
+                  {dados.painel.cobertura.soGerada} só com questão gerada
+                </p>
+              )}
             </div>
             <div className="flex flex-col justify-center gap-2">
               <button
