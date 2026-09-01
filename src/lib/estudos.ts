@@ -117,6 +117,8 @@ export interface MicrotemaNaArvore {
   numero: string;
   questoes: number;
   cards: number;
+  /** Coberto SÓ por questão gerada por IA — nada validado por trás. */
+  soGerada?: boolean;
 }
 
 export interface GrupoDeTemas {
@@ -126,6 +128,7 @@ export interface GrupoDeTemas {
   questoes: number;
   cards: number;
   cobertos: number;
+  soGerada?: number;
 }
 
 export interface ModuloDeTemas {
@@ -135,13 +138,20 @@ export interface ModuloDeTemas {
   questoes: number;
   cards: number;
   cobertos: number;
+  soGerada?: number;
   total: number;
 }
 
 export interface PainelHome {
   diasParaProva: number | null;
   vencidasHoje: number;
-  cobertura: { comDerivado: number; total: number; programaVersao: string };
+  cobertura: {
+    comDerivado: number;
+    /** Dos cobertos, quantos só por questão gerada por IA (Carta 3). */
+    soGerada?: number;
+    total: number;
+    programaVersao: string;
+  };
 }
 
 /** Item de sessão para o POST (contrato do B4): card OU questão. */

@@ -17,7 +17,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { BookOpen, ChevronDown, ChevronRight, Layers, Search, TriangleAlert } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Layers, Search, Sparkles, TriangleAlert } from "lucide-react";
 import type { ModuloDeTemas } from "@/lib/estudos";
 
 /** Busca sem acento/caixa (mesma régua do banco). */
@@ -157,6 +157,12 @@ export default function MenuTemas({ modulos, aoEscolher }: Props) {
                                 sem material
                               </span>
                             )}
+                            {!!g.soGerada && (
+                              <span className="inline-flex items-center gap-1 text-est-warning">
+                                <Sparkles size={11} aria-hidden />
+                                <span className="tabular-nums">{g.soGerada}</span> só gerada
+                              </span>
+                            )}
                           </span>
                         </span>
                       </button>
@@ -190,6 +196,10 @@ export default function MenuTemas({ modulos, aoEscolher }: Props) {
                               <span className="shrink-0 whitespace-nowrap text-[0.7rem] tabular-nums text-est-fg-soft">
                                 {vazio ? (
                                   <span className="text-est-warning">sem material</span>
+                                ) : m.soGerada ? (
+                                  <span className="text-est-warning">
+                                    {m.questoes}q só gerada
+                                  </span>
                                 ) : (
                                   `${m.questoes}q · ${m.cards}c`
                                 )}
