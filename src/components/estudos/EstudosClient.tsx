@@ -20,7 +20,7 @@
  * (bottom-24; xl:static porque a barra some no desktop).
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Calendar, Check, CircleHelp, ListTree, Lock, Play, RefreshCw, Search, ThumbsDown, Timer, X } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
@@ -29,6 +29,8 @@ import {
   dicaDaQuestao,
   formatarDataProva,
   postarFeedback,
+  postarSessao,
+  type ItemSessaoPost,
   type Estudo,
   type OrigemQuestao,
   type TipoQuestao,
@@ -276,10 +278,118 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
     }
   }, [token, pin]);
 
+  // ── Gravação das respostas do banco ────────────────────────────────────
+  // Antes daqui, responder no banco só mexia no estado do React: nada era
+  // gravado, o filtro "já respondidas" nunca saía de zero e a questão voltava
+  // intacta no próximo acesso. Sessão e Simulado gravavam; o banco, não.
+  //
+  // Desenho: UMA sessão por visita, reenviada inteira a cada lote. O servidor
+  // grava por `id` (setDoc), então reenviar o mesmo id ATUALIZA em vez de criar
+  // outra sessão — em vez de uma sessão por questão respondida.
+  //
+  // Nada disso nasce no primeiro render: id e início saem na PRIMEIRA resposta,
+  // dentro de refs. `useState(() => Date.now())` no topo divergiria entre
+  // servidor e cliente e viraria erro de hidratação.
+  const sessaoRef = useRef<{ id: string; inicioEm: string } | null>(null);
+  const itensRef = useRef<Map<string, ItemSessaoPost>>(new Map());
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [gravacao, setGravacao] = useState<"ocioso" | "gravando" | "salvo" | "erro">("ocioso");
+  /** Quantas respostas desta visita já estão gravadas no servidor. */
+  const [gravadas, setGravadas] = useState(0);
+
+  const enviarSessao = useCallback(
+    async (aoSair = false) => {
+      const sessao = sessaoRef.current;
+      const itens = [...itensRef.current.values()];
+      if (!sessao || itens.length === 0 || !pin || dados.bloqueado) return;
+      const cursoId = dados.curso.id;
+      if (!cursoId) return;
+
+      const fim = new Date();
+      if (!aoSair) setGravacao("gravando");
+      try {
+        await postarSessao(
+          token,
+          pin,
+          {
+            id: sessao.id,
+            cursoId,
+            inicioEm: sessao.inicioEm,
+            fimEm: fim.toISOString(),
+            // Carta 8: minutos na data de COMPETÊNCIA. No banco a sessão é
+            // navegação livre, então o tempo é o decorrido desde a 1ª resposta.
+            minutos: Math.max(
+              0,
+              Math.round((fim.getTime() - new Date(sessao.inicioEm).getTime()) / 60000)
+            ),
+            competenciaEm: sessao.inicioEm.slice(0, 10),
+            itens,
+          },
+          aoSair
+        );
+        if (!aoSair) {
+          setGravacao("salvo");
+          setGravadas(itens.length);
+        }
+      } catch {
+        if (!aoSair) setGravacao("erro");
+      }
+    },
+    [token, pin, dados]
+  );
+
+  /** Agenda o envio; respostas em sequência entram no MESMO lote. */
+  const agendarEnvio = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => void enviarSessao(), 1200);
+  }, [enviarSessao]);
+
+  // Rede de segurança: fechar a aba ou trocar de app no celular não pode
+  // perder o que ainda estava no debounce.
+  useEffect(() => {
+    const aoSair = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      void enviarSessao(true);
+    };
+    const aoEsconder = () => {
+      if (document.visibilityState === "hidden") aoSair();
+    };
+    window.addEventListener("pagehide", aoSair);
+    document.addEventListener("visibilitychange", aoEsconder);
+    return () => {
+      window.removeEventListener("pagehide", aoSair);
+      document.removeEventListener("visibilitychange", aoEsconder);
+    };
+  }, [enviarSessao]);
+
   const responder = (questaoId: string) => {
     const escolhida = selecao[questaoId];
     if (escolhida === undefined) return;
     setRespostas((r) => ({ ...r, [questaoId]: escolhida }));
+
+    const q = questoes.find((x) => x.id === questaoId);
+    if (!q) return;
+    const gabarito = q.gabaritoOficial ?? q.gabaritoIA;
+    itensRef.current.set(questaoId, {
+      questaoId,
+      // Sem gabarito não há como julgar: 'nulo' conta como respondida e fica
+      // fora de acerto e de erro, em vez de inventar um veredito.
+      resultado:
+        gabarito === undefined || gabarito === null
+          ? "nulo"
+          : escolhida === gabarito
+            ? "certo"
+            : "errado",
+      origem: q.origem,
+      tipo: q.tipo,
+      ...(dicasAbertas[questaoId] ? { usouDica: true as const } : {}),
+    });
+    sessaoRef.current ??= {
+      id: `banco-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      inicioEm: new Date().toISOString(),
+    };
+    setGravacao("gravando");
+    agendarEnvio();
   };
 
   const irParaProxima = (indiceAtual: number) => {
@@ -899,6 +1009,45 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
                   Acertos: {sessao.acertos}/{sessao.respondidas}
                   {sessao.comDica > 0 && ` · ${sessao.comDica} com dica`}
                 </span>
+                {/* Confirmação de que a resposta CONTOU. Sem isto o usuário não
+                    tem como saber que gravou — e foi assim que respostas se
+                    perderam em silêncio até 01/09. */}
+                {gravacao !== "ocioso" && (
+                  <span
+                    role="status"
+                    aria-live="polite"
+                    className={cn(
+                      "inline-flex items-center gap-1.5 text-xs font-bold",
+                      gravacao === "erro" ? "text-est-negative" : "text-est-fg-soft"
+                    )}
+                  >
+                    {gravacao === "gravando" && (
+                      <>
+                        <RefreshCw size={12} className="animate-spin" aria-hidden /> Gravando…
+                      </>
+                    )}
+                    {gravacao === "salvo" && (
+                      <>
+                        <Check size={12} className="text-est-positive" aria-hidden />
+                        <span className="text-est-positive">
+                          {gravadas} {gravadas === 1 ? "resposta salva" : "respostas salvas"}
+                        </span>
+                      </>
+                    )}
+                    {gravacao === "erro" && (
+                      <>
+                        Não deu para salvar
+                        <button
+                          type="button"
+                          onClick={() => void enviarSessao()}
+                          className="underline underline-offset-2"
+                        >
+                          tentar de novo
+                        </button>
+                      </>
+                    )}
+                  </span>
+                )}
                 <span className="text-est-fg-soft">
                   Oficial:{" "}
                   <strong className="text-est-fg">

@@ -328,7 +328,14 @@ export async function buscarEstudo(token: string, pin?: string): Promise<Estudo>
 export async function postarSessao(
   token: string,
   pin: string,
-  sessao: SessaoPost
+  sessao: SessaoPost,
+  /**
+   * `true` quando a gravação sai no caminho de saída da página (`pagehide`).
+   * Aí o fetch precisa de `keepalive` para o navegador não matar a requisição
+   * ao descarregar o documento — e NÃO pode ter `AbortSignal.timeout`, que
+   * cancelaria justamente o envio que se quer salvar.
+   */
+  aoSair = false
 ): Promise<{ ok: true; reviewsAtualizados: number }> {
   let resp: Response;
   try {
@@ -336,7 +343,7 @@ export async function postarSessao(
       method: "POST",
       headers: { "content-type": "application/json", "x-pin-leitura": pin },
       body: JSON.stringify({ sessao }),
-      signal: AbortSignal.timeout(15_000),
+      ...(aoSair ? { keepalive: true } : { signal: AbortSignal.timeout(15_000) }),
     });
   } catch {
     throw new EstudoApiError("Falha ao gravar sessão (rede)", 0);
