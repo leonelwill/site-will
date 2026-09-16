@@ -1,0 +1,4 @@
+interface:
+  display_name: "QA do Site William"
+  short_description: "Auditoria visual, funcional e de movimento"
+  default_prompt: "Use $site-quality-audit para auditar o site do William com evidências e prioridades, sem implementar correções."

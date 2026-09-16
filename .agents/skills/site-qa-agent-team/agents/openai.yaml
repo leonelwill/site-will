@@ -1,0 +1,4 @@
+interface:
+  display_name: "Equipe de agentes para QA do site"
+  short_description: "Delega inspeção estática sem delegar o veredito"
+  default_prompt: "Use $site-qa-agent-team para apoiar uma fase delimitada do QA do site com OpenCode Go em modo somente leitura."
