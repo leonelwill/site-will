@@ -153,6 +153,40 @@ export interface PainelHome {
   };
 }
 
+/**
+ * Config da Sonda (mini-simulado por temas). Ausente em cert sem PD/pesos
+ * ingeridos (ex. C-Pro R) — aí a porta da Sonda fica desabilitada.
+ */
+export interface SondaConfig {
+  /** moduloId → fração do peso oficial (ex. 0.2) — soma 1 (ou renormaliza). */
+  pesos: Record<string, number>;
+  /** Fonte oficial do peso — exibida na escolha (G3). */
+  fonte: string;
+  /** Alvo de aprovação (ex. 0.7) — régua do acumulado. */
+  alvo: number;
+  alvoFonte: string;
+  /** Mínimo de validadas por módulo para entrar no sorteio. */
+  pisoValidadas: number;
+  /** Durações da porta — n vem daqui (8 min → 8 · 20 min → 16). */
+  duracoes: readonly { minutos: number; questoes: number }[];
+}
+
+/**
+ * Veredito por tema DERIVADO das sessões (espelho do motor do Zeno): só com
+ * `estado === "estude"` a tela mostra o bloco "Estude"; fora disso é evento
+ * de amostra.
+ */
+export interface VereditoTema {
+  moduloId: string;
+  unicas: number;
+  sessoes: number;
+  dias: number;
+  acertos: number;
+  estado: "insuficiente" | "estude";
+  /** Limite SUPERIOR do IC95 das únicas; null quando `unicas = 0`. */
+  wilsonSuperior: number | null;
+}
+
 /** Item de sessão para o POST (contrato do B4): card OU questão. */
 export type ItemSessaoPost =
   | { cardId: string; resultado: "certo" | "errado" | "nulo" }
@@ -198,6 +232,10 @@ export interface EstudoCompleto {
   arvoreTemas?: ModuloDeTemas[];
   /** Títulos dos microtemas do PD (id → título) — alimenta a dica de fallback. */
   microtemas?: Record<string, string>;
+  /** Sonda — config do mini-simulado por temas (ausente sem PD/pesos). */
+  sonda?: SondaConfig;
+  /** Vereditos por tema derivados das sessões — alimenta o acumulado da Sonda. */
+  vereditosTemas?: VereditoTema[];
   bloqueado: false;
 }
 
@@ -334,14 +372,16 @@ export async function postarSessao(
    * ao descarregar o documento — e NÃO pode ter `AbortSignal.timeout`, que
    * cancelaria justamente o envio que se quer salvar.
    */
-  aoSair = false
+  aoSair = false,
+  /** Modo da sessão: sonda (mini-simulado por temas) ou livre. O Zeno persiste. */
+  modo?: "livre" | "sonda"
 ): Promise<{ ok: true; reviewsAtualizados: number }> {
   let resp: Response;
   try {
     resp = await fetch(`/api/estudos/${encodeURIComponent(token)}/sessao`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-pin-leitura": pin },
-      body: JSON.stringify({ sessao }),
+      body: JSON.stringify(modo ? { sessao, modo } : { sessao }),
       ...(aoSair ? { keepalive: true } : { signal: AbortSignal.timeout(15_000) }),
     });
   } catch {
@@ -483,4 +523,165 @@ export function acertoComMargem(acertos: number, n: number): string {
   };
   const { p, inferior, superior } = wilson(acertos, n);
   return `${fmt(p * 100)}% · IC95 ${fmt(inferior * 100)}%–${fmt(superior * 100)}% · n=${n}`;
+}
+
+// ── Sonda (espelho de zeno_cloud/src/lib/estudos/{embaralhar,sonda}.ts) ─────
+// Rodada curta que toca TODOS os módulos da certificação. NÃO é simulado: a
+// amostra (8 ou 16) não sustenta diagnóstico por tema, então o motor entrega só
+// os números — "evento, não percentual" é decisão da tela. Repos separados, sem
+// pacote compartilhado: mudou lá, muda aqui, com teste nos dois lados.
+
+/** PRNG semeado (mulberry32) — mesma semente, mesma sequência. */
+function geradorSemeado(semente: number): () => number {
+  let estado = semente >>> 0;
+  return () => {
+    estado = (estado + 0x6d2b79f5) >>> 0;
+    let t = estado;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Fisher-Yates com PRNG semeado — determinístico e reprodutível. */
+export function embaralharComSemente<T>(itens: readonly T[], semente: number): T[] {
+  const saida = [...itens];
+  const proximo = geradorSemeado(semente);
+  for (let i = saida.length - 1; i > 0; i--) {
+    const j = Math.floor(proximo() * (i + 1));
+    [saida[i], saida[j]] = [saida[j], saida[i]];
+  }
+  return saida;
+}
+
+/** Tolerância para comparar restos fracionários (peso × n vem de float). */
+const EPS_SONDA = 1e-9;
+
+/**
+ * Divisão proporcional por maior resto (espelho de `alocarPorMaiorResto`).
+ *
+ * `bruto = peso * n`; `base = floor(bruto)`; a sobra vai aos maiores restos.
+ * Empate de resto é desempatado por ROTAÇÃO `(posição + rodada) mod nºEmpatados`
+ * — sem isso o mesmo módulo levaria a sobra toda rodada após rodada. Pesos que
+ * não somam 1 são renormalizados aqui: a fonte pode arredondar. A soma do
+ * resultado é EXATAMENTE `n`.
+ */
+export function alocarPorMaiorRestoEstudo(
+  pesos: Record<string, number>,
+  n: number,
+  rodada: number
+): Record<string, number> {
+  const ids = Object.keys(pesos);
+  const resultado: Record<string, number> = {};
+  for (const id of ids) resultado[id] = 0;
+  if (ids.length === 0 || n <= 0) return resultado;
+
+  const soma = ids.reduce((s, id) => s + pesos[id], 0);
+  const fator = soma > 0 && Math.abs(soma - 1) > EPS_SONDA ? 1 / soma : 1;
+  const itens = ids.map((id) => {
+    const bruto = pesos[id] * fator * n;
+    const base = Math.floor(bruto);
+    return { id, base, frac: bruto - base };
+  });
+  const sobra = n - itens.reduce((s, it) => s + it.base, 0);
+  for (const it of itens) resultado[it.id] = it.base;
+
+  // Resto desc; empates agrupados (tolerância) e rotacionados pela rodada.
+  const ordenados = [...itens].sort((a, b) => b.frac - a.frac);
+  const grupos: (typeof itens)[] = [];
+  for (const it of ordenados) {
+    const atual = grupos[grupos.length - 1];
+    if (atual && Math.abs(atual[0].frac - it.frac) <= EPS_SONDA) atual.push(it);
+    else grupos.push([it]);
+  }
+  const fila: typeof itens = [];
+  for (const g of grupos) {
+    if (g.length === 1) {
+      fila.push(g[0]);
+      continue;
+    }
+    const posicao = new Map(g.map((it, p) => [it.id, p]));
+    fila.push(
+      ...[...g].sort(
+        (a, b) =>
+          ((posicao.get(a.id)! + rodada) % g.length) - ((posicao.get(b.id)! + rodada) % g.length)
+      )
+    );
+  }
+  for (let k = 0; k < sobra && k < fila.length; k++) resultado[fila[k].id] += 1;
+  return resultado;
+}
+
+export interface EntradaSondaEstudo {
+  questaoId: string;
+  moduloId: string;
+  origem: OrigemQuestao;
+  /** Data (ISO dia) da última resposta — ausente = nunca vista. */
+  vistaEm?: string;
+}
+
+/**
+ * Monta a sonda a partir do acervo e dos pesos (espelho de `montarSonda`).
+ *
+ * `embaralhavel` chega JÁ embaralhado pelo caller (semente da rodada) — a
+ * função só respeita a ordem e particiona nunca-vistas / vistas dentro de cada
+ * módulo. Pool só de questão VALIDADA (`origem !== "gerada"`): gerada nunca
+ * entra, e módulo com acervo abaixo do piso fica de fora declarando a contagem
+ * real, em vez de fingir cobertura.
+ */
+export function montarSondaEstudo(
+  entradas: EntradaSondaEstudo[],
+  pesos: Record<string, number>,
+  questoes: number,
+  rodada: number,
+  embaralhavel: string[],
+  pisoValidadas: number
+): {
+  itens: { questaoId: string; moduloId: string }[];
+  composicao: { moduloId: string; qtd: number }[];
+  insuficientes: { moduloId: string; validadas: number }[];
+} {
+  // Pool validado por módulo: 'gerada' NUNCA entra em sonda.
+  const poolPorModulo = new Map<string, Map<string, { vistaEm?: string }>>();
+  for (const e of entradas) {
+    if (e.origem === "gerada") continue;
+    const pool = poolPorModulo.get(e.moduloId) ?? new Map();
+    pool.set(e.questaoId, { vistaEm: e.vistaEm });
+    poolPorModulo.set(e.moduloId, pool);
+  }
+
+  const insuficientes: { moduloId: string; validadas: number }[] = [];
+  const pesosElegiveis: Record<string, number> = {};
+  for (const moduloId of Object.keys(pesos)) {
+    const validadas = poolPorModulo.get(moduloId)?.size ?? 0;
+    if (validadas < pisoValidadas) {
+      insuficientes.push({ moduloId, validadas });
+      continue;
+    }
+    pesosElegiveis[moduloId] = pesos[moduloId];
+  }
+
+  const alocacao = alocarPorMaiorRestoEstudo(pesosElegiveis, questoes, rodada);
+
+  const itens: { questaoId: string; moduloId: string }[] = [];
+  const composicao: { moduloId: string; qtd: number }[] = [];
+  for (const moduloId of Object.keys(pesosElegiveis)) {
+    const qtd = alocacao[moduloId] ?? 0;
+    if (qtd <= 0) continue;
+    const pool = poolPorModulo.get(moduloId)!;
+    const nuncaVistas: string[] = [];
+    const vistas: string[] = [];
+    for (const questaoId of embaralhavel) {
+      const estado = pool.get(questaoId);
+      if (!estado) continue;
+      if (estado.vistaEm) vistas.push(questaoId);
+      else nuncaVistas.push(questaoId);
+    }
+    // Nunca vista primeiro; a ordem relativa de cada grupo é a do embaralho.
+    const escolhidas = [...nuncaVistas, ...vistas].slice(0, qtd);
+    composicao.push({ moduloId, qtd: escolhidas.length });
+    for (const questaoId of escolhidas) itens.push({ questaoId, moduloId });
+  }
+
+  return { itens, composicao, insuficientes };
 }

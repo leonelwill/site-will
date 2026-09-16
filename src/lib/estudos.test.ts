@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   acertoComMargem,
+  alocarPorMaiorRestoEstudo,
+  embaralharComSemente,
   montarFilaEstudo,
+  montarSondaEstudo,
   wilson,
   type CardEstudo,
+  type EntradaSondaEstudo,
   type Questao,
   type ReviewCard,
 } from "./estudos";
@@ -134,5 +138,109 @@ describe("montarFilaEstudo — fila zero-decisão com orçamento em minutos", ()
     const com1 = montarFilaEstudo([], [], erradas, ["e1", "e2"], null, 1, HOJE);
     expect(com1.itens).toHaveLength(0);
     expect(com1.minutos).toBe(0);
+  });
+});
+
+// ── Sonda — espelho de zeno_cloud/src/lib/estudos/{sonda,embaralhar}.ts ────
+
+describe("alocarPorMaiorRestoEstudo — divisão proporcional com rotação do excedente", () => {
+  it("maior resto: sobra vai aos maiores restos fracionários (8 e 16)", () => {
+    const pesos = { m1: 0.2, m2: 0.4, m3: 0.3, m4: 0.1 };
+    expect(alocarPorMaiorRestoEstudo(pesos, 8, 0)).toEqual({ m1: 2, m2: 3, m3: 2, m4: 1 });
+    const r8 = alocarPorMaiorRestoEstudo(pesos, 8, 0);
+    expect(Object.values(r8).reduce((s, v) => s + v, 0)).toBe(8);
+    const r16 = alocarPorMaiorRestoEstudo(pesos, 16, 0);
+    expect(r16).toEqual({ m1: 3, m2: 6, m3: 5, m4: 2 });
+    expect(Object.values(r16).reduce((s, v) => s + v, 0)).toBe(16);
+  });
+
+  it("empate de resto: rotação dá o excedente a outro módulo na rodada seguinte", () => {
+    const pesos = { a: 0.25, b: 0.25, c: 0.5 };
+    expect(alocarPorMaiorRestoEstudo(pesos, 6, 0)).toEqual({ a: 2, b: 1, c: 3 });
+    expect(alocarPorMaiorRestoEstudo(pesos, 6, 1)).toEqual({ a: 1, b: 2, c: 3 });
+  });
+
+  it("pesos que não somam 1 são renormalizados", () => {
+    // 0.4 + 0.6 somam 1.0; 0.2 + 0.3 somam 0.5 → vira 0.4/0.6 de novo.
+    const r = alocarPorMaiorRestoEstudo({ x: 0.2, y: 0.3 }, 10, 0);
+    expect(r).toEqual({ x: 4, y: 6 });
+  });
+});
+
+describe("montarSondaEstudo — pool validado, piso e nunca-vistas primeiro", () => {
+  it("módulo com acervo abaixo do piso sai do sorteio declarando a contagem real", () => {
+    const entradas: EntradaSondaEstudo[] = [];
+    for (let i = 0; i < 7; i++) entradas.push({ questaoId: `m1-${i}`, moduloId: "m1", origem: "digitada" });
+    for (let i = 0; i < 25; i++) entradas.push({ questaoId: `m2-${i}`, moduloId: "m2", origem: "simulado-oficial" });
+    const r = montarSondaEstudo(entradas, { m1: 0.5, m2: 0.5 }, 8, 0, entradas.map((e) => e.questaoId), 20);
+    expect(r.insuficientes).toEqual([{ moduloId: "m1", validadas: 7 }]);
+    // Renormalização dá todos os slots ao módulo elegível.
+    expect(r.composicao).toEqual([{ moduloId: "m2", qtd: 8 }]);
+    expect(r.itens).toHaveLength(8);
+    expect(r.itens.every((i) => i.moduloId === "m2")).toBe(true);
+  });
+
+  it("gerada NUNCA entra, mesmo no meio do pool", () => {
+    const entradas: EntradaSondaEstudo[] = [];
+    for (let i = 0; i < 20; i++) entradas.push({ questaoId: `v${i}`, moduloId: "m1", origem: "digitada" });
+    entradas.splice(10, 0, { questaoId: "g1", moduloId: "m1", origem: "gerada" });
+    const r = montarSondaEstudo(entradas, { m1: 1 }, 8, 0, entradas.map((e) => e.questaoId), 20);
+    expect(r.itens.map((i) => i.questaoId)).not.toContain("g1");
+    expect(r.insuficientes).toEqual([]);
+    expect(r.itens).toHaveLength(8);
+  });
+
+  it("só gerada no acervo: módulo sai como insuficiente com 0 validadas", () => {
+    const entradas: EntradaSondaEstudo[] = [];
+    for (let i = 0; i < 25; i++) entradas.push({ questaoId: `g${i}`, moduloId: "m1", origem: "gerada" });
+    const r = montarSondaEstudo(entradas, { m1: 1 }, 8, 0, entradas.map((e) => e.questaoId), 20);
+    expect(r.insuficientes).toEqual([{ moduloId: "m1", validadas: 0 }]);
+    expect(r.itens).toHaveLength(0);
+  });
+
+  it("nunca vistas primeiro, mantendo a ordem relativa do embaralho", () => {
+    const entradas: EntradaSondaEstudo[] = [
+      { questaoId: "v1", moduloId: "m1", origem: "digitada", vistaEm: "2026-09-01" },
+      { questaoId: "v2", moduloId: "m1", origem: "digitada", vistaEm: "2026-09-02" },
+      { questaoId: "n1", moduloId: "m1", origem: "digitada" },
+      { questaoId: "n2", moduloId: "m1", origem: "digitada" },
+      { questaoId: "n3", moduloId: "m1", origem: "digitada" },
+    ];
+    const embaralhavel = ["v1", "n1", "v2", "n2", "n3"];
+    const r = montarSondaEstudo(entradas, { m1: 1 }, 3, 0, embaralhavel, 1);
+    // Alocação 3 → só as nunca vistas, na ordem em que aparecem no embaralho.
+    expect(r.itens.map((i) => i.questaoId)).toEqual(["n1", "n2", "n3"]);
+    expect(r.insuficientes).toEqual([]);
+  });
+});
+
+describe("embaralharComSemente — determinístico e permutação", () => {
+  it("mesma semente → mesma ordem; elementos são os mesmos", () => {
+    const base = ["a", "b", "c", "d", "e", "f"];
+    const s1 = embaralharComSemente(base, 12345);
+    const s2 = embaralharComSemente(base, 12345);
+    expect(s1).toEqual(s2);
+    expect(s1).toHaveLength(base.length);
+    expect([...s1].sort()).toEqual([...base].sort());
+    expect(embaralharComSemente(base, 999)).toEqual(embaralharComSemente(base, 999));
+  });
+
+  it("sementes diferentes costumam embaralhar diferente", () => {
+    const base = Array.from({ length: 50 }, (_, i) => `q${i}`);
+    const s1 = embaralharComSemente(base, 1);
+    const s2 = embaralharComSemente(base, 2);
+    expect(s1).not.toEqual(s2);
+  });
+});
+
+describe("embaralharComSemente — não mutação e permutação", () => {
+  it("mesma semente → mesma ordem; embaralhar NÃO muta a entrada; resultado é permutação", () => {
+    const original = [1, 2, 3, 4, 5, 6, 7, 8];
+    const copia = [...original];
+    const a = embaralharComSemente(original, 42);
+    const b = embaralharComSemente(original, 42);
+    expect(a).toEqual(b);
+    expect(original).toEqual(copia);
+    expect([...a].sort((x, y) => x - y)).toEqual(copia);
   });
 });
