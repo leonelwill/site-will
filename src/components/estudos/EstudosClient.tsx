@@ -106,6 +106,51 @@ function StatSessao({
   );
 }
 
+/**
+ * Explicação por alternativa (F3) — mesma régua da SessaoEstudo: abre a
+ * escolhida e a correta (se distintas) e recolhe os demais distratores.
+ */
+function ExplicacaoPorAlternativa({
+  alternativas,
+  explicacoes,
+  escolhida,
+  gabarito,
+}: {
+  alternativas: string[];
+  explicacoes: string[];
+  escolhida: number | null;
+  gabarito: number | null;
+}) {
+  const abertas: number[] = [];
+  if (escolhida !== null && escolhida !== gabarito) abertas.push(escolhida);
+  if (gabarito !== null) abertas.push(gabarito);
+  const recolhidas = alternativas.map((_, i) => i).filter((i) => !abertas.includes(i));
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-bold uppercase tracking-wide text-est-fg-soft">
+        Por que cada alternativa
+      </p>
+      {abertas.map((i) => (
+        <div key={i} className="rounded-lg bg-est-sunken p-3 text-sm leading-relaxed text-est-fg">
+          <p className="font-bold text-est-fg">
+            {letra(i)} — {gabarito === i ? "correta" : "sua resposta"}
+          </p>
+          <p className="mt-1">{explicacoes[i] ?? ""}</p>
+        </div>
+      ))}
+      {recolhidas.map((i) => (
+        <details key={i} className="rounded-lg border border-est-border bg-est-card p-3">
+          <summary className="cursor-pointer text-sm font-bold text-est-primary-ink">
+            {letra(i)} — por que esta parecia certa?
+          </summary>
+          <p className="mt-2 text-sm leading-relaxed text-est-fg">{explicacoes[i] ?? ""}</p>
+        </details>
+      ))}
+    </div>
+  );
+}
+
 type Fase = "bloqueado" | "carregando" | "erro" | "completo";
 
 interface Props {
@@ -1081,10 +1126,19 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
                           Sem gabarito (oficial ou IA) para esta questão.
                         </p>
                       )}
-                      {q.explicacao && (
-                        <div className="rounded-lg bg-est-sunken p-3 text-sm leading-relaxed text-est-fg">
-                          {q.explicacao}
-                        </div>
+                      {q.explicacaoPorAlternativa?.length ? (
+                        <ExplicacaoPorAlternativa
+                          alternativas={q.alternativas}
+                          explicacoes={q.explicacaoPorAlternativa}
+                          escolhida={respostas[q.id] ?? null}
+                          gabarito={gabarito}
+                        />
+                      ) : (
+                        q.explicacao && (
+                          <div className="rounded-lg bg-est-sunken p-3 text-sm leading-relaxed text-est-fg">
+                            {q.explicacao}
+                          </div>
+                        )
                       )}
                       {q.origem === "gerada" &&
                         (rejeitadasLocal[q.id] ? (

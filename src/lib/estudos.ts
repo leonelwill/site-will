@@ -49,6 +49,8 @@ export interface Questao {
   gabaritoOficial?: number;
   gabaritoIA?: number;
   explicacao?: string;
+  /** Explicação POR alternativa (uma por alternativa) — quando existe, substitui `explicacao`. */
+  explicacaoPorAlternativa?: string[];
   /** Pista exibida ANTES da resposta (ícone "?") — orienta sem revelar o gabarito. */
   dica?: string;
   /** Thumbs-down (questão gerada rejeitada): some das listas, sinal fica no Zeno. */
@@ -197,6 +199,8 @@ export type ItemSessaoPost =
       tipo: TipoQuestao;
       /** Resposta dada com a dica aberta — declarada na sessão (Carta 3). */
       usouDica?: boolean;
+      /** Reteste de recuperação (recall livre, sem alternativas) — declarado. */
+      recall?: true;
     };
 
 export interface SessaoPost {
@@ -303,6 +307,8 @@ export interface CursoNoHub extends CursoInfo {
 export interface Hub {
   cursos: CursoNoHub[];
   bloqueado: boolean;
+  /** Links úteis da vitrine (material externo, com data de conferência). */
+  links?: { rotulo: string; url: string; finalidade: string; conferidoEm: string }[];
 }
 
 /**
@@ -431,7 +437,11 @@ export function hojeLocalISO(): string {
   return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
 }
 
-export interface ItemFilaEstudo {
+export interface ItemFila {
+  microtemaPdId?: string;
+}
+
+export interface ItemFilaEstudo extends ItemFila {
   tipo: "card" | "questao";
   card?: CardEstudo;
   questao?: Questao;
@@ -475,10 +485,10 @@ export function montarFilaEstudo(
   const novasResto = semReview.filter((c) => c.microtemaPdId !== microtemaAlvo);
 
   const ordenada: Array<{ item: ItemFilaEstudo; categoria: keyof FilaEstudoMontada["composicao"] }> = [
-    ...vencidas.map((card) => ({ item: { tipo: "card", card } as ItemFilaEstudo, categoria: "vencidas" as const })),
-    ...erradas.map((questao) => ({ item: { tipo: "questao", questao } as ItemFilaEstudo, categoria: "erradas" as const })),
-    ...novasAlvo.map((card) => ({ item: { tipo: "card", card } as ItemFilaEstudo, categoria: "novas" as const })),
-    ...novasResto.map((card) => ({ item: { tipo: "card", card } as ItemFilaEstudo, categoria: "novas" as const })),
+    ...vencidas.map((card) => ({ item: { tipo: "card", card, microtemaPdId: card.microtemaPdId } as ItemFilaEstudo, categoria: "vencidas" as const })),
+    ...erradas.map((questao) => ({ item: { tipo: "questao", questao, microtemaPdId: questao.microtemaPdId } as ItemFilaEstudo, categoria: "erradas" as const })),
+    ...novasAlvo.map((card) => ({ item: { tipo: "card", card, microtemaPdId: card.microtemaPdId } as ItemFilaEstudo, categoria: "novas" as const })),
+    ...novasResto.map((card) => ({ item: { tipo: "card", card, microtemaPdId: card.microtemaPdId } as ItemFilaEstudo, categoria: "novas" as const })),
   ];
 
   const itens: ItemFilaEstudo[] = [];
@@ -492,6 +502,78 @@ export function montarFilaEstudo(
     minutos += custo;
   }
   return { itens, minutos, composicao };
+}
+
+/**
+ * Interleaving por microtema (espelho de `intercalarPorMicrotema` em
+ * zeno_cloud/src/lib/estudos/fila.ts): agrupa em blocos de até `tamanhoBloco`
+ * itens do MESMO tema e alterna os temas em rodadas. Itens sem microtema vão
+ * para o fim, na ordem original. Pura — nunca muta a entrada.
+ */
+export function intercalarPorMicrotema<T extends ItemFila>(
+  itens: T[],
+  tamanhoBloco: 2 | 3 = 2
+): T[] {
+  const ordemTemas: string[] = [];
+  const blocos = new Map<string, T[][]>();
+  const semTema: T[] = [];
+
+  for (const item of itens) {
+    const tema = item.microtemaPdId;
+    if (tema === undefined) {
+      semTema.push(item);
+      continue;
+    }
+    let doTema = blocos.get(tema);
+    if (!doTema) {
+      doTema = [];
+      blocos.set(tema, doTema);
+      ordemTemas.push(tema);
+    }
+    const ultimo = doTema[doTema.length - 1];
+    if (ultimo && ultimo.length < tamanhoBloco) ultimo.push(item);
+    else doTema.push([item]);
+  }
+
+  const saida: T[] = [];
+  const maxBlocos = ordemTemas.reduce((m, t) => Math.max(m, blocos.get(t)!.length), 0);
+  for (let b = 0; b < maxBlocos; b++) {
+    for (const tema of ordemTemas) {
+      const bloco = blocos.get(tema)![b];
+      if (bloco) saida.push(...bloco);
+    }
+  }
+  return [...saida, ...semTema];
+}
+
+export interface RetesteAgendado<T> {
+  /** Fila com o reteste inserido (a original fica intocada). */
+  fila: T[];
+  /** Item do pool que entrou, ou null quando não havia candidata. */
+  inserido: T | null;
+}
+
+/**
+ * Reteste de recuperação: insere a PRIMEIRA candidata do pool `distancia`
+ * posições depois do erro (clamp ao fim da fila). O caller monta o item (com
+ * `recall: true`, sem alternativas) e já exclui a própria questão errada do
+ * pool — aqui não há acoplamento com a marca do site.
+ *
+ * Sem candidata, devolve a fila original e `inserido: null` (nada de inventar
+ * reteste). Pura — nunca muta a entrada.
+ */
+export function agendarReteste<T extends ItemFila>(
+  filaAtual: T[],
+  posicaoDoErro: number,
+  candidatos: T[],
+  distancia: number = 3
+): RetesteAgendado<T> {
+  const candidata = candidatos[0];
+  if (!candidata) return { fila: filaAtual, inserido: null };
+  const alvo = Math.min(posicaoDoErro + distancia, filaAtual.length);
+  const fila = [...filaAtual];
+  fila.splice(alvo, 0, candidata);
+  return { fila, inserido: candidata };
 }
 
 /**

@@ -19,13 +19,18 @@ import { Check, CircleHelp, RotateCcw, ThumbsDown, X } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
+  agendarReteste,
   dicaDaQuestao,
+  embaralharComSemente,
   hojeLocalISO,
+  intercalarPorMicrotema,
   montarFilaEstudo,
   postarFeedback,
   postarSessao,
   type EstudoCompleto,
+  type ItemFilaEstudo,
   type ItemSessaoPost,
+  type Questao,
 } from "@/lib/estudos";
 import { cn } from "@/lib/utils";
 
@@ -65,12 +70,20 @@ interface Props {
 
 export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoInicial, escopoRascunho }: Props) {
   const chaveRascunho = `zeno:est:sessao:${token}${escopoRascunho ? `:${escopoRascunho}` : ""}`;
+  const chaveAvisoInterleave = `zeno:est:aviso-interleave:${token}`;
   const [orcamento, setOrcamento] = useState(orcamentoInicial ?? 20);
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
   const [retomado, setRetomado] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
-  const [resumo, setResumo] = useState<{ minutos: number; itens: number; acertos: number; comDica: number } | null>(null);
+  const [resumo, setResumo] = useState<{
+    minutos: number;
+    itens: number;
+    acertos: number;
+    comDica: number;
+    retestes: number;
+    retidos: number;
+  } | null>(null);
   const [selecaoQuestao, setSelecaoQuestao] = useState<number | null>(null);
   /** Feedback da questão respondida — enquanto ativo, o avanço espera "Próxima". */
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -78,6 +91,16 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
   const [rejeitadaLocal, setRejeitadaLocal] = useState<Record<string, true>>({});
   // Cards virados na tela (revela o verso SEM avançar — só Errei/Acertei avançam).
   const [versosAbertos, setVersosAbertos] = useState<Set<string>>(new Set());
+  /**
+   * Itens de RETESTE de recuperação (recall livre, sem alternativas) inseridos
+   * na fila viva — o rótulo `recall: true` só existe no POST/resumo, não no
+   * rascunho (reteste é evento da sessão ao vivo, não estado persistido).
+   */
+  const [recallLocal, setRecallLocal] = useState<Record<string, true>>({});
+  /** "Rever este ponto" já agendado por questão (não clica de novo). */
+  const [reverAgendado, setReverAgendado] = useState<Record<string, true>>({});
+  /** Aviso de interleaving dispensável — um clique some (localStorage por token). */
+  const [avisoInterleave, setAvisoInterleave] = useState(true);
 
   // Retomada: rascunho não finalizado existe → usa; senão nasce agora.
   useEffect(() => {
@@ -96,6 +119,24 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Aviso de interleaving: dispensado uma vez por token.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(chaveAvisoInterleave)) setAvisoInterleave(false);
+    } catch {
+      /* localStorage indisponível: aviso só em memória */
+    }
+  }, [chaveAvisoInterleave]);
+
+  const dispensarAvisoInterleave = useCallback(() => {
+    setAvisoInterleave(false);
+    try {
+      localStorage.setItem(chaveAvisoInterleave, "1");
+    } catch {
+      /* ok */
+    }
+  }, [chaveAvisoInterleave]);
+
   const fila = useMemo(
     () =>
       montarFilaEstudo(
@@ -109,6 +150,17 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
     [dados, orcamento]
   );
 
+  // Fila VIVA: a montada passa pelo interleaving por microtema (espelho do
+  // Zeno) e ganha os retestes de recuperação ao longo da sessão. Ao retomar
+  // (ou trocar o orçamento antes de responder), re-deriva SEM retestes
+  // pendentes — reteste é evento da sessão ao vivo, não estado persistido.
+  const [filaViva, setFilaViva] = useState<ItemFilaEstudo[]>(() =>
+    intercalarPorMicrotema(fila.itens)
+  );
+  useEffect(() => {
+    setFilaViva(intercalarPorMicrotema(fila.itens));
+  }, [fila]);
+
   // Rascunho novo no localStorage quando a fila muda e não há retomada.
   useEffect(() => {
     if (!retomado && rascunho) {
@@ -120,10 +172,13 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
     }
   }, [rascunho, retomado, chaveRascunho]);
 
-  const itens = fila.itens;
-  const indice = rascunho?.indice ?? 0;
-  const atual = itens[indice];
+  const itens = filaViva;
   const total = itens.length;
+  // Reteste é evento da sessão ao vivo: ao retomar, a fila re-deriva sem os
+  // retestes que existiam, então o índice gravado pode passar do novo total —
+  // clampa (a fila encolheu, não o usuário andou para trás).
+  const indice = Math.min(rascunho?.indice ?? 0, total);
+  const atual = itens[indice];
   const respondidos = rascunho ? Object.keys(rascunho.resultados).length : 0;
 
   /** Grava o resultado no rascunho; `avancar=false` só na questão (o avanço
@@ -180,6 +235,48 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
     });
   }, [chaveRascunho, total]);
 
+  /** Candidatas a reteste do MESMO microtema: fora da fila, sem resposta,
+   *  nunca a própria questão errada. O CALLER filtra — o espelho não acopla. */
+  const candidatasRecall = useCallback(
+    (questao: Questao): Questao[] => {
+      const naFila = new Set(
+        itens.map((it) => it.questao?.id).filter((id): id is string => !!id)
+      );
+      return dados.questoes.filter(
+        (q) =>
+          !!q.microtemaPdId &&
+          q.microtemaPdId === questao.microtemaPdId &&
+          q.id !== questao.id &&
+          !naFila.has(q.id) &&
+          !rascunho?.resultados[q.id]
+      );
+    },
+    [itens, dados.questoes, rascunho]
+  );
+
+  /** Agenda um recall na fila viva; devolve se entrou (senão, fila intocada). */
+  const agendarRecall = useCallback(
+    (questao: Questao, posicaoErro: number, distancia: number): boolean => {
+      const candidatos = embaralharComSemente(
+        candidatasRecall(questao).map(
+          (q): ItemFilaEstudo => ({
+            tipo: "questao",
+            questao: q,
+            microtemaPdId: q.microtemaPdId,
+          })
+        ),
+        Date.now()
+      );
+      const { fila: nova, inserido } = agendarReteste(itens, posicaoErro, candidatos, distancia);
+      if (!inserido) return false;
+      setFilaViva(nova);
+      const id = inserido.questao?.id;
+      if (id) setRecallLocal((r) => ({ ...r, [id]: true }));
+      return true;
+    },
+    [itens, candidatasRecall]
+  );
+
   const finalizar = useCallback(async () => {
     if (!rascunho || itens.length === 0) {
       aoFechar(false);
@@ -195,6 +292,8 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
     const postItens: ItemSessaoPost[] = [];
     let acertos = 0;
     let comDica = 0;
+    let retestes = 0;
+    let retidos = 0;
     for (const item of itens) {
       const id = item.tipo === "card" ? item.card?.id : item.questao?.id;
       if (!id) continue;
@@ -206,11 +305,17 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
       } else if (item.questao) {
         const usouDica = !!rascunho.dicas?.[id];
         if (usouDica) comDica++;
+        const ehRecall = !!recallLocal[id];
+        if (ehRecall) {
+          retestes++;
+          if (resultado === "certo") retidos++;
+        }
         postItens.push({
           questaoId: id,
           resultado,
           origem: item.questao.origem,
           tipo: item.questao.tipo,
+          ...(ehRecall ? { recall: true as const } : {}),
           ...(usouDica ? { usouDica: true } : {}),
         });
       }
@@ -230,13 +335,13 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
       } catch {
         /* ok */
       }
-      setResumo({ minutos, itens: postItens.length, acertos, comDica });
+      setResumo({ minutos, itens: postItens.length, acertos, comDica, retestes, retidos });
     } catch {
       setErroSalvar("Não consegui gravar a sessão — ela segue salva aqui; tente de novo.");
     } finally {
       setSalvando(false);
     }
-  }, [rascunho, itens, token, pin, dados.curso, chaveRascunho, aoFechar]);
+  }, [rascunho, itens, token, pin, dados.curso, chaveRascunho, aoFechar, recallLocal]);
 
   // ── Resumo pós-POST ────────────────────────────────────────────────────
   if (resumo) {
@@ -250,6 +355,11 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
           {resumo.itens} itens · {resumo.acertos} certos · {resumo.minutos} min (competência de hoje)
           {resumo.comDica > 0 && ` · ${resumo.comDica} com dica`}
         </p>
+        {resumo.retestes > 0 && (
+          <p className="mt-1 text-sm text-est-fg-soft">
+            {resumo.retestes} retestes · {resumo.retidos} retidos
+          </p>
+        )}
         <p className="mt-2 text-xs text-est-fg-soft">
           Revisões agendadas pelo SM-2.
         </p>
@@ -292,9 +402,28 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
     feedback.questaoId === questaoAtual.id
   );
   const dicaAberta = !!(questaoAtual && rascunho?.dicas?.[questaoAtual.id]);
+  const ehRecall = !!(questaoAtual && recallLocal[questaoAtual.id]);
+  const temExplicacaoPorAlternativa = !!questaoAtual?.explicacaoPorAlternativa?.length;
 
   return (
     <div className="space-y-4">
+      {avisoInterleave && (
+        <div className="flex items-start gap-2 rounded-xl border border-est-warning/40 bg-est-warning-soft px-3 py-2.5 text-xs text-est-warning">
+          <span className="flex-1 leading-relaxed">
+            A mistura de temas é intencional (interleaving) — a queda de fluência no meio da
+            sessão é esperada.
+          </span>
+          <button
+            type="button"
+            onClick={dispensarAvisoInterleave}
+            aria-label="Dispensar aviso"
+            className="shrink-0 rounded-lg p-1 hover:bg-est-warning/10"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
       {/* Progresso + orçamento */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-bold text-est-primary-ink">
@@ -375,11 +504,16 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
             <span className="rounded-full bg-est-sunken px-2 py-0.5 text-est-fg-soft">
               {RÓTULOS_TIPO[questaoAtual.tipo]}
             </span>
+            {ehRecall && (
+              <span className="rounded-full bg-est-warning/15 px-2 py-0.5 text-est-warning">
+                Reteste de recuperação
+              </span>
+            )}
             {(() => {
               // (?) só quando há o que mostrar (dica escrita ou microtema do PD)
               // e a resposta ainda não saiu — depois do feedback não existe dúvida.
               const dica = dicaDaQuestao(questaoAtual, dados.microtemas);
-              if (!dica || feedbackAtivo) return null;
+              if (!dica || feedbackAtivo || ehRecall) return null;
               if (dicaAberta) return null;
               return (
                 <button
@@ -409,6 +543,25 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
             );
           })()}
           <p className="text-sm font-semibold leading-relaxed text-est-fg">{questaoAtual.enunciado}</p>
+          {ehRecall ? (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => registrar(questaoAtual.id, "errado")}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-est-negative/50 bg-est-negative-soft px-4 py-2.5 text-sm font-bold text-est-negative hover:bg-est-negative-soft"
+              >
+                <X size={15} /> Não lembrei
+              </button>
+              <button
+                type="button"
+                onClick={() => registrar(questaoAtual.id, "certo")}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-est-positive/50 bg-est-positive-soft px-4 py-2.5 text-sm font-bold text-est-positive hover:bg-est-positive-soft"
+              >
+                <Check size={15} /> Lembrei
+              </button>
+            </div>
+          ) : (
+            <>
           <div className="mt-3 space-y-2">
             {questaoAtual.alternativas.map((alt, i) => {
               const eAEscolhida = feedbackAtivo
@@ -483,16 +636,46 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
                   Sua resposta: {String.fromCharCode(65 + feedback.escolhida)}
                 </p>
               )}
-              {feedback.resultado !== "nulo" && questaoAtual.explicacao && (
-                <div className="mt-2.5 rounded-lg bg-est-card p-3 text-sm leading-relaxed text-est-fg">
-                  {questaoAtual.explicacao}
-                </div>
+              {feedback.resultado !== "nulo" && temExplicacaoPorAlternativa && (
+                <ExplicacaoPorAlternativa
+                  alternativas={questaoAtual.alternativas}
+                  explicacoes={questaoAtual.explicacaoPorAlternativa!}
+                  escolhida={feedback.escolhida}
+                  gabarito={feedback.gabarito}
+                />
               )}
-              {feedback.resultado === "errado" && !questaoAtual.explicacao && (
-                <p className="mt-2 text-xs text-est-fg-soft">
-                  Sem explicação disponível para esta questão.
-                </p>
-              )}
+              {feedback.resultado !== "nulo" &&
+                !temExplicacaoPorAlternativa &&
+                questaoAtual.explicacao && (
+                  <div className="mt-2.5 rounded-lg bg-est-card p-3 text-sm leading-relaxed text-est-fg">
+                    {questaoAtual.explicacao}
+                  </div>
+                )}
+              {feedback.resultado === "errado" &&
+                !temExplicacaoPorAlternativa &&
+                !questaoAtual.explicacao && (
+                  <p className="mt-2 text-xs text-est-fg-soft">
+                    Sem explicação disponível para esta questão.
+                  </p>
+                )}
+              {feedback.resultado === "errado" &&
+                (reverAgendado[questaoAtual.id] ? (
+                  <p className="mt-2 text-xs font-medium text-est-fg-soft">
+                    Rever este ponto agendado ✓ — volta no fim da sessão.
+                  </p>
+                ) : candidatasRecall(questaoAtual).length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (agendarRecall(questaoAtual, indice, itens.length)) {
+                        setReverAgendado((r) => ({ ...r, [questaoAtual.id]: true }));
+                      }
+                    }}
+                    className="mt-2 inline-flex items-center gap-1 self-start text-xs font-bold text-est-primary-ink hover:underline"
+                  >
+                    <RotateCcw size={13} /> Rever este ponto
+                  </button>
+                ) : null)}
               {questaoAtual.origem === "gerada" &&
                 (rejeitadaLocal[questaoAtual.id] ? (
                   <p className="mt-2 text-xs font-medium text-est-fg-soft">
@@ -546,12 +729,16 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
                   });
                   // Registra SEM avançar: o avanço é decisão do "Próxima".
                   registrar(questaoAtual.id, resultado, false);
+                  // Erro em questão: agenda reteste de recuperação 3 itens à frente.
+                  if (resultado === "errado") agendarRecall(questaoAtual, indice, 3);
                 }}
                 className="mt-4 w-full rounded-xl bg-est-primary px-4 py-2.5 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90"
               >
                 Responder
               </button>
             )
+          )}
+            </>
           )}
         </article>
       )}
@@ -579,6 +766,53 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
           <RotateCcw size={15} /> {salvando ? "Gravando…" : "Finalizar e gravar"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Explicação por alternativa (F3): abre a ESCOLHIDA e a CORRETA (se distintas);
+ * os demais distratores ficam recolhidos em `<details>`. Só é usada quando
+ * `questao.explicacaoPorAlternativa` existe — sem o campo, o feedback mantém a
+ * `explicacao` única de sempre.
+ */
+function ExplicacaoPorAlternativa({
+  alternativas,
+  explicacoes,
+  escolhida,
+  gabarito,
+}: {
+  alternativas: string[];
+  explicacoes: string[];
+  escolhida: number | null;
+  gabarito: number | null;
+}) {
+  const abertas: number[] = [];
+  if (escolhida !== null && escolhida !== gabarito) abertas.push(escolhida);
+  if (gabarito !== null) abertas.push(gabarito);
+  const recolhidas = alternativas.map((_, i) => i).filter((i) => !abertas.includes(i));
+
+  return (
+    <div className="mt-2.5 space-y-2">
+      <p className="text-xs font-bold uppercase tracking-wide text-est-fg-soft">
+        Por que cada alternativa
+      </p>
+      {abertas.map((i) => (
+        <div key={i} className="rounded-lg bg-est-card p-3 text-sm leading-relaxed text-est-fg">
+          <p className="font-bold text-est-fg">
+            {String.fromCharCode(65 + i)} — {gabarito === i ? "correta" : "sua resposta"}
+          </p>
+          <p className="mt-1">{explicacoes[i] ?? ""}</p>
+        </div>
+      ))}
+      {recolhidas.map((i) => (
+        <details key={i} className="rounded-lg border border-est-border bg-est-card p-3">
+          <summary className="cursor-pointer text-sm font-bold text-est-primary-ink">
+            {String.fromCharCode(65 + i)} — por que esta parecia certa?
+          </summary>
+          <p className="mt-2 text-sm leading-relaxed text-est-fg">{explicacoes[i] ?? ""}</p>
+        </details>
+      ))}
     </div>
   );
 }
