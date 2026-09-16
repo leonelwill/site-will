@@ -55,10 +55,16 @@ interface Props {
   aoFechar: (salvou: boolean) => void;
   /** Minutos pedidos na porta (home) — sem ela, 20. */
   orcamentoInicial?: number;
+  /**
+   * Escopo do rascunho (ex.: módulo da sonda). SEM isto, sessão cheia e
+   * sessão de módulo compartilham a MESMA chave de retomada — rascunho de uma
+   * vaza pra dentro da outra (índice fora da fila, início velho).
+   */
+  escopoRascunho?: string;
 }
 
-export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoInicial }: Props) {
-  const chaveRascunho = `zeno:est:sessao:${token}`;
+export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoInicial, escopoRascunho }: Props) {
+  const chaveRascunho = `zeno:est:sessao:${token}${escopoRascunho ? `:${escopoRascunho}` : ""}`;
   const [orcamento, setOrcamento] = useState(orcamentoInicial ?? 20);
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
   const [retomado, setRetomado] = useState(false);

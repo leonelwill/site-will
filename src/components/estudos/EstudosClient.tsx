@@ -38,6 +38,7 @@ import {
 import MenuTemas from "./MenuTemas";
 import SessaoEstudo from "./SessaoEstudo";
 import Simulado from "./Simulado";
+import Sonda from "./Sonda";
 import { cn } from "@/lib/utils";
 
 /** Busca sem acento/caixa (molde do EventoClient). */
@@ -160,10 +161,23 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
   );
   /** Recorte vindo do menu de temas: ids de microtema + o rótulo para a tela. */
   const [recorteTema, setRecorteTema] = useState<{ ids: string[]; rotulo: string } | null>(null);
+  /**
+   * Recorte de MÓDULO vindo da Sonda (clique no evento de erro): abre uma
+   * sessão só daquele módulo. Diferente do recorteTema do banco — a sessão
+   * recebe cards/questões/erradasRecentes filtrados.
+   */
+  const [recorteModulo, setRecorteModulo] = useState<{
+    moduloId: string;
+    ids: string[];
+    rotulo: string;
+  } | null>(null);
   const [busca, setBusca] = useState("");
   // Home = porta de entrada (uma ação: Estudar 20 min). "banco" = lista de
-  // questões sob "Mais"; "estudar" = sessão zero-decisão; "simulado"; "temas".
-  const [vista, setVista] = useState<"home" | "banco" | "estudar" | "simulado" | "temas">("home");
+  // questões sob "Mais"; "estudar" = sessão zero-decisão; "simulado"; "temas";
+  // "sonda" = mini-simulado por temas.
+  const [vista, setVista] = useState<"home" | "banco" | "estudar" | "simulado" | "temas" | "sonda">(
+    "home"
+  );
   /** O "Mais" da home é fechado por padrão — a porta não é um menu. */
   const [maisAberto, setMaisAberto] = useState(false);
 
@@ -229,6 +243,40 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
     setFiltroEstado("todas");
     setVista("banco");
   }, []);
+
+  /**
+   * Vem da Sonda (evento de erro): abre a sessão de estudo RECORTADA no
+   * módulo. Não recria motor nenhum — `SessaoEstudo` segue intocado; aqui só
+   * se monta o recorte a partir dos microtemas do módulo (`arvoreTemas`).
+   */
+  const estudarModulo = useCallback(
+    (moduloId: string) => {
+      if (dados.bloqueado) return;
+      const mod = (dados.arvoreTemas ?? []).find((m) => m.id === moduloId);
+      if (!mod) return;
+      const ids = mod.grupos.flatMap((g) => g.microtemas.map((m) => m.id));
+      setRecorteModulo({ moduloId, ids, rotulo: mod.titulo });
+      setVista("estudar");
+    },
+    [dados]
+  );
+
+  /** Dados da sessão: recorte de módulo (Sonda) ou o conjunto completo. */
+  const dadosSessao = useMemo(() => {
+    if (dados.bloqueado) return null;
+    if (!recorteModulo) return { ...dados, questoes };
+    const ids = new Set(recorteModulo.ids);
+    const questoesModulo = questoes.filter(
+      (q) => q.microtemaPdId && ids.has(q.microtemaPdId)
+    );
+    const idsQuestoes = new Set(questoesModulo.map((q) => q.id));
+    return {
+      ...dados,
+      questoes: questoesModulo,
+      cards: (dados.cards ?? []).filter((c) => c.microtemaPdId && ids.has(c.microtemaPdId)),
+      erradasRecentes: (dados.erradasRecentes ?? []).filter((e) => idsQuestoes.has(e.questaoId)),
+    };
+  }, [dados, questoes, recorteModulo]);
 
   /** Acertos/respondidas gerais + % oficial (simulado-oficial) e % gerada,
    *  SEPARADOS — nunca somadas. Sem gabarito (oficial ou IA) não entra nas %. */
@@ -572,18 +620,27 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
               {textoPreviaFila(previaFila.composicao)}
             </p>
 
-            {/* Secundária desabilitada COM o motivo escrito — não só no title.
-                A Fase 2 liga a Sonda. */}
+            {/* Secundária: ligada quando o Zeno despacha `sonda` (pesos do PD).
+                Sem pesos (cert sem PD ingerido, ex. C-Pro R), continua
+                desabilitada COM o motivo escrito — não só no title. */}
             <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1">
               <button
                 type="button"
-                disabled
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-border px-4 py-2.5 text-sm font-bold text-est-fg-soft opacity-60"
+                onClick={() => setVista("sonda")}
+                disabled={!dados.sonda}
+                className={cn(
+                  "flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-border px-4 py-2.5 text-sm font-bold transition-colors",
+                  dados.sonda
+                    ? "text-est-primary-ink hover:bg-est-sunken"
+                    : "text-est-fg-soft opacity-60"
+                )}
               >
                 <Radar size={15} /> Sonda
               </button>
               <span className="text-xs text-est-fg-soft">
-                mini-simulado por temas — chega na próxima atualização
+                {dados.sonda
+                  ? `mini-simulado por temas: ${(dados.sonda?.duracoes ?? []).map((d) => `${d.minutos} min`).join(" ou ") || "rodadas curtas"}`
+                  : "programa detalhado ainda não ingerido"}
               </span>
             </div>
 
@@ -674,18 +731,55 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
           </div>
         ) : vista === "estudar" && !dados.bloqueado ? (
           <div className="mt-6">
+            {/* Subheader do recorte de módulo (vindo da Sonda): sempre visível
+                e sempre removível — filtro escondido é a origem do "sumiram
+                minhas questões". */}
+            {recorteModulo && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-est-primary/40 bg-est-primary/10 px-3 py-2">
+                <ListTree size={15} className="shrink-0 text-est-primary-ink" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-xs font-bold text-est-fg">
+                  Sessão de {recorteModulo.rotulo}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecorteModulo(null);
+                    setVista("home");
+                  }}
+                  aria-label="Remover o recorte de módulo"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-est-primary-ink hover:bg-est-primary/10"
+                >
+                  <X size={14} /> Remover
+                </button>
+              </div>
+            )}
             <SessaoEstudo
               token={token}
               pin={pin}
-              dados={{ ...dados, questoes }}
+              dados={dadosSessao ?? { ...dados, questoes }}
               orcamentoInicial={ORÇAMENTO_HOME}
+              escopoRascunho={recorteModulo?.moduloId}
               aoFechar={(salvou) => {
+                setRecorteModulo(null);
                 setVista("home");
                 if (salvou) {
                   // Reviews/erradas mudaram no Zeno — busca de novo COM o PIN.
                   void desbloquear();
                 }
               }}
+            />
+          </div>
+        ) : vista === "sonda" && !dados.bloqueado ? (
+          <div className="mt-6">
+            <Sonda
+              token={token}
+              pin={pin}
+              dados={{ ...dados, questoes }}
+              aoFechar={(salvou) => {
+                setVista("home");
+                if (salvou) void desbloquear();
+              }}
+              aoEstudarTema={estudarModulo}
             />
           </div>
         ) : vista === "simulado" && !dados.bloqueado ? (
