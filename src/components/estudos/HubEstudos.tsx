@@ -21,6 +21,12 @@ import EstudosClient from "./EstudosClient";
 
 type Fase = "bloqueado" | "verificando" | "vitrine" | "abrindo" | "curso" | "erro";
 
+/** "2026-09-16" → "16/09/2026" (data de conferência do link, sem fuso). */
+function dataBR(iso: string): string {
+  const [a, m, d] = iso.slice(0, 10).split("-");
+  return a && m && d ? `${d}/${m}/${a}` : iso;
+}
+
 interface Props {
   token: string;
   /** SSR sem PIN: cards bloqueados (identidade + contagens). */
@@ -210,6 +216,35 @@ export default function HubEstudos({ token, inicial }: Props) {
               );
             })}
           </ul>
+        )}
+
+        {!!hub.links?.length && (
+          <section className="mt-10" aria-labelledby="links-uteis">
+            <h2 id="links-uteis" className="text-lg font-bold text-est-primary-ink">
+              Links úteis
+            </h2>
+            <ul className="mt-3 space-y-2">
+              {hub.links.map((link) => (
+                <li
+                  key={link.url}
+                  className="rounded-xl border border-est-border bg-est-card p-4 shadow-sm"
+                >
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-est-primary-ink hover:underline"
+                  >
+                    {link.rotulo}
+                  </a>
+                  <p className="mt-1 text-sm leading-relaxed text-est-fg-soft">{link.finalidade}</p>
+                  <p className="mt-1 text-xs text-est-fg-faint">
+                    conferido em {dataBR(link.conferidoEm)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         <p className="mt-10 text-center text-xs text-est-fg-faint">

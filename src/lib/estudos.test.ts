@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   acertoComMargem,
+  agendarReteste,
   alocarPorMaiorRestoEstudo,
   embaralharComSemente,
+  intercalarPorMicrotema,
   montarFilaEstudo,
   montarSondaEstudo,
   wilson,
@@ -242,5 +244,107 @@ describe("embaralharComSemente — não mutação e permutação", () => {
     expect(a).toEqual(b);
     expect(original).toEqual(copia);
     expect([...a].sort((x, y) => x - y)).toEqual(copia);
+  });
+});
+
+// ── Interleaving e reteste — espelho de zeno_cloud/src/lib/estudos/fila.ts ──
+
+describe("intercalarPorMicrotema — espelho de zeno_cloud/src/lib/estudos/fila.ts", () => {
+  const no = (id: string, tema?: string) => ({ id, microtemaPdId: tema });
+
+  it("bloco de 2: alterna os temas preservando a ordem interna", () => {
+    const fila = [no("a1", "a"), no("a2", "a"), no("a3", "a"), no("b1", "b"), no("b2", "b")];
+    expect(intercalarPorMicrotema(fila, 2).map((i) => i.id)).toEqual([
+      "a1",
+      "a2",
+      "b1",
+      "b2",
+      "a3",
+    ]);
+  });
+
+  it("bloco de 3: no máximo 3 do mesmo tema seguidos", () => {
+    const fila = [no("a1", "a"), no("a2", "a"), no("a3", "a"), no("a4", "a"), no("b1", "b")];
+    expect(intercalarPorMicrotema(fila, 3).map((i) => i.id)).toEqual([
+      "a1",
+      "a2",
+      "a3",
+      "b1",
+      "a4",
+    ]);
+  });
+
+  it("round-robin alterna temas em rodadas, ordem interna intacta", () => {
+    const fila = [
+      no("a1", "a"),
+      no("a2", "a"),
+      no("b1", "b"),
+      no("b2", "b"),
+      no("a3", "a"),
+      no("b3", "b"),
+    ];
+    expect(intercalarPorMicrotema(fila, 2).map((i) => i.id)).toEqual([
+      "a1",
+      "a2",
+      "b1",
+      "b2",
+      "a3",
+      "b3",
+    ]);
+  });
+
+  it("itens sem microtema vão para o fim, na ordem original", () => {
+    const fila = [no("x1"), no("a1", "a"), no("x2"), no("a2", "a")];
+    expect(intercalarPorMicrotema(fila, 2).map((i) => i.id)).toEqual([
+      "a1",
+      "a2",
+      "x1",
+      "x2",
+    ]);
+  });
+
+  it("NÃO muta a entrada", () => {
+    const fila = [no("a1", "a"), no("b1", "b"), no("a2", "a")];
+    const copia = fila.map((i) => ({ ...i }));
+    intercalarPorMicrotema(fila, 2);
+    expect(fila).toEqual(copia);
+  });
+});
+
+describe("agendarReteste — reteste de recuperação puro", () => {
+  const no = (id: string) => ({ id, microtemaPdId: "m" });
+
+  it("insere a candidata em erro+3", () => {
+    const fila = [no("q0"), no("q1"), no("q2"), no("q3"), no("q4")];
+    const { fila: nova, inserido } = agendarReteste(fila, 0, [no("c")], 3);
+    expect(nova.map((i) => i.id)).toEqual(["q0", "q1", "q2", "c", "q3", "q4"]);
+    expect(inserido?.id).toBe("c");
+  });
+
+  it("clamp ao fim quando erro+3 passa do tamanho", () => {
+    const fila = [no("q0"), no("q1")];
+    const { fila: nova } = agendarReteste(fila, 1, [no("c")], 3);
+    expect(nova.map((i) => i.id)).toEqual(["q0", "q1", "c"]);
+  });
+
+  it("sem candidata: devolve a MESMA fila e inserido null", () => {
+    const fila = [no("q0")];
+    const r = agendarReteste(fila, 0, [], 3);
+    expect(r.fila).toBe(fila);
+    expect(r.inserido).toBeNull();
+  });
+
+  it("não muta a entrada", () => {
+    const fila = [no("q0"), no("q1")];
+    agendarReteste(fila, 0, [no("c")], 3);
+    expect(fila.map((i) => i.id)).toEqual(["q0", "q1"]);
+  });
+
+  it("não filtra: excluir a própria errada do pool é contrato do caller", () => {
+    const errada = no("errada");
+    // Sem filtro, o espelho insere a própria errada — por isso o caller exclui.
+    expect(agendarReteste([errada], 0, [errada], 3).inserido?.id).toBe("errada");
+    // Contrato correto: pool sem a errada.
+    expect(agendarReteste([errada], 0, [no("c")], 3).inserido?.id).toBe("c");
   });
 });
