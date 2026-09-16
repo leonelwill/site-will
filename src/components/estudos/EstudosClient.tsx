@@ -21,13 +21,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Calendar, Check, CircleHelp, ListTree, Lock, Play, RefreshCw, Search, ThumbsDown, Timer, X } from "lucide-react";
+import { ArrowLeft, Check, CircleHelp, Ellipsis, ListTree, Lock, Play, Radar, RefreshCw, Search, ThumbsDown, Timer, X } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
-  diasCorridosAteProva,
+  acertoComMargem,
   dicaDaQuestao,
-  formatarDataProva,
+  montarFilaEstudo,
   postarFeedback,
   postarSessao,
   type ItemSessaoPost,
@@ -53,17 +53,56 @@ function letra(idx: number): string {
   return String.fromCharCode(65 + idx);
 }
 
-/**
- * Margem de erro binomial (pior caso p = 0,5, nível 95%).
- * espelho de zeno_cloud/src/lib/estudos/margem.ts (repos separados)
- */
-function margemBinomial(n: number): number {
-  return 1.96 * Math.sqrt(0.25 / n);
-}
-
 /** "62,5" / "12,1" — uma casa, vírgula decimal (mesma régua do Zeno). */
 function fmt1(x: number): string {
   return x.toFixed(1).replace(".", ",");
+}
+
+/** Orçamento da porta: a home só oferece uma sessão de 20 min. */
+const ORÇAMENTO_HOME = 20;
+
+/** "8 revisões vencidas · 4 erradas · até 8 novas" — 1 no singular. */
+function textoPreviaFila(c: { vencidas: number; erradas: number; novas: number }): string {
+  if (c.vencidas + c.erradas + c.novas === 0) {
+    return "nada vencido hoje — a sessão traz material novo dentro dos 20 min";
+  }
+  const plural = (n: number, um: string, varios: string) =>
+    `${n} ${n === 1 ? um : varios}`;
+  return [
+    plural(c.vencidas, "revisão vencida", "revisões vencidas"),
+    plural(c.erradas, "errada", "erradas"),
+    `até ${plural(c.novas, "nova", "novas")}`,
+  ].join(" · ");
+}
+
+/**
+ * Linha de resultado da sessão ("Oficial: 67,6% · IC95 50,8%–80,9% · n=34").
+ * O percentual fica no <strong>; o resto vem de `acertoComMargem` — o formato
+ * único do Estudos — para não nascer uma terceira régua aqui dentro (e o
+ * travessão EN DASH não pode quebrar dentro do JSX).
+ */
+function StatSessao({
+  rotulo,
+  acertos,
+  n,
+}: {
+  rotulo: string;
+  acertos: number;
+  n: number;
+}) {
+  const resto = n < 1 ? null : acertoComMargem(acertos, n).split(" · ").slice(1).join(" · ");
+  return (
+    <span className="text-est-fg-soft">
+      {rotulo}:{" "}
+      {resto === null ? (
+        "—"
+      ) : (
+        <>
+          <strong className="text-est-fg">{fmt1((acertos / n) * 100)}%</strong> {resto}
+        </>
+      )}
+    </span>
+  );
 }
 
 type Fase = "bloqueado" | "carregando" | "erro" | "completo";
@@ -122,9 +161,11 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
   /** Recorte vindo do menu de temas: ids de microtema + o rótulo para a tela. */
   const [recorteTema, setRecorteTema] = useState<{ ids: string[]; rotulo: string } | null>(null);
   const [busca, setBusca] = useState("");
-  // F1b: home ("banco" = lista de questões) · sessão zero-decisão · simulado.
-  // F1c: "temas" = menu de macrotemas/microtemas do programa.
-  const [vista, setVista] = useState<"banco" | "estudar" | "simulado" | "temas">("banco");
+  // Home = porta de entrada (uma ação: Estudar 20 min). "banco" = lista de
+  // questões sob "Mais"; "estudar" = sessão zero-decisão; "simulado"; "temas".
+  const [vista, setVista] = useState<"home" | "banco" | "estudar" | "simulado" | "temas">("home");
+  /** O "Mais" da home é fechado por padrão — a porta não é um menu. */
+  const [maisAberto, setMaisAberto] = useState(false);
 
   const questoes = useMemo(
     () => (dados.bloqueado ? [] : dados.questoes.filter((q) => !q.rejeitadaEm)),
@@ -406,17 +447,19 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
     setDicasAbertas({});
   };
 
-  // Prova: DD/MM/AAAA · N dias corridos (dias só no futuro; datas puras UTC).
-  const linhaProva = useMemo(() => {
+  // Prévia da fila na home: MESMA montarFilaEstudo e MESMOS inputs que a
+  // sessão vai receber — o número da porta é o do motor, não uma estimativa.
+  const previaFila = useMemo(() => {
     if (dados.bloqueado) return null;
-    const iso = dados.curso.dataProva;
-    if (!iso) return null;
-    const dias = diasCorridosAteProva(iso);
-    const texto = `Prova: ${formatarDataProva(iso)}`;
-    return dias !== null && dias > 0
-      ? `${texto} · ${dias} ${dias === 1 ? "dia corrido" : "dias corridos"}`
-      : texto;
-  }, [dados]);
+    return montarFilaEstudo(
+      dados.cards ?? [],
+      dados.reviews ?? [],
+      questoes,
+      (dados.erradasRecentes ?? []).map((e) => e.questaoId),
+      dados.microtemaMenosCoberto,
+      ORÇAMENTO_HOME
+    );
+  }, [dados, questoes]);
 
   // ── Tela: PIN (bloqueado + carregando) e erro de rede ──────────────────
   if (fase === "erro") {
@@ -509,100 +552,114 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
           <p className="mt-1 text-sm font-medium text-est-fg-soft">
             {curso.contagens.questoes} questões ingeridas
           </p>
-          {/* Dias corridos dependem do relógio local × servidor: diferença de
-              fuso não deve virar erro de hidratação. */}
-          {linhaProva && (
-            <p
-              suppressHydrationWarning
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border bg-est-card px-3 py-2 text-sm font-medium text-est-fg"
-            >
-              <Calendar size={16} className="shrink-0 text-est-primary-ink" />
-              {linhaProva}
-            </p>
-          )}
         </header>
 
-        {/* Painel da home (F1b): números COM unidade. Dados do painel vêm do
-            Zeno (B4); vencidas degradam para contagem local quando o backend
-            ainda não despachou. Sem dataProva → 2 números (Carta 9: countdown
-            só existe quando o fato existe). */}
-        {!dados.bloqueado && vista === "banco" && (
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {dados.curso.dataProva && (
-              <div className="rounded-xl border border-est-border bg-est-card p-3.5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-est-fg-soft">
-                  Dias p/ a prova
-                </p>
-                <p
-                  className="mt-1 flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums text-est-primary-ink"
-                  suppressHydrationWarning
-                >
-                  {diasCorridosAteProva(dados.curso.dataProva) ?? "—"}
-                  <span className="text-xs font-medium text-est-fg-soft">dias corridos</span>
-                </p>
-              </div>
-            )}
-            <div className="rounded-xl border border-est-border bg-est-card p-3.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-est-fg-soft">
-                Revisões vencidas hoje
-              </p>
-              <p className="mt-1 flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums text-est-primary-ink">
-                {dados.painel?.vencidasHoje ?? dados.reviews?.length ?? 0}
-                <span className="text-xs font-medium text-est-fg-soft">cards</span>
-              </p>
+        {/* Home (porta de entrada): UMA ação — Estudar 20 min. Os números do
+            painel vêm do Zeno (B4); vencidas degradam para contagem local
+            quando o backend ainda não despachou. W5: sem prazo, sem prova. */}
+        {vista === "home" && !dados.bloqueado && previaFila ? (
+          <div className="mx-auto mt-6 max-w-md">
+            <button
+              type="button"
+              onClick={() => setVista("estudar")}
+              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-est-primary px-4 py-4 text-base font-bold text-est-primary-fg transition-colors hover:bg-est-primary/90"
+            >
+              <Play size={18} /> Estudar 20 min
+            </button>
+            {/* A linha é a mesma fila que a sessão vai montar — número do
+                motor, não promessa. */}
+            <p className="mt-2 text-center text-sm text-est-fg-soft sm:text-left">
+              {textoPreviaFila(previaFila.composicao)}
+            </p>
+
+            {/* Secundária desabilitada COM o motivo escrito — não só no title.
+                A Fase 2 liga a Sonda. */}
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <button
+                type="button"
+                disabled
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-border px-4 py-2.5 text-sm font-bold text-est-fg-soft opacity-60"
+              >
+                <Radar size={15} /> Sonda
+              </button>
+              <span className="text-xs text-est-fg-soft">
+                mini-simulado por temas — chega na próxima atualização
+              </span>
             </div>
-            <div className="rounded-xl border border-est-border bg-est-card p-3.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-est-fg-soft">
-                Cobertura do programa
-              </p>
-              <p className="mt-1 flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums text-est-primary-ink">
-                {dados.painel ? `${dados.painel.cobertura.comDerivado}/${dados.painel.cobertura.total}` : "—"}
-                <span className="text-xs font-medium text-est-fg-soft">microtemas</span>
-              </p>
-              {/* Carta 3: cobertura sustentada só por questão gerada é declarada
-                  ao lado do número, não somada em silêncio a material validado. */}
-              {!!dados.painel?.cobertura.soGerada && (
-                <p className="mt-0.5 text-[0.7rem] font-medium text-est-warning">
-                  {dados.painel.cobertura.soGerada} só com questão gerada
-                </p>
+
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setMaisAberto((a) => !a)}
+                aria-expanded={maisAberto}
+                className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-est-border px-4 py-2.5 text-sm font-bold text-est-fg-soft transition-colors hover:bg-est-sunken hover:text-est-fg"
+              >
+                <Ellipsis size={15} /> Mais
+              </button>
+              {maisAberto && (
+                <div className="mt-2 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVista("banco")}
+                    className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-border px-3 py-3 text-sm font-bold text-est-fg-soft transition-colors hover:bg-est-sunken hover:text-est-fg"
+                  >
+                    <Search size={15} /> Banco de questões
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVista("simulado")}
+                    className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-border px-3 py-3 text-sm font-bold text-est-fg-soft transition-colors hover:bg-est-sunken hover:text-est-fg"
+                  >
+                    <Timer size={15} /> Simulado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVista("temas")}
+                    className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-border px-3 py-3 text-sm font-bold text-est-fg-soft transition-colors hover:bg-est-sunken hover:text-est-fg"
+                  >
+                    <ListTree size={15} /> Temas
+                  </button>
+                </div>
               )}
             </div>
-            <div className="flex flex-col justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => setVista("estudar")}
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-est-primary px-3 py-3 text-sm font-bold text-est-primary-fg hover:bg-est-primary/90"
-              >
-                <Play size={15} /> Estudar agora
-              </button>
-              <button
-                type="button"
-                onClick={() => setVista("simulado")}
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-primary/60 px-3 py-3 text-sm font-bold text-est-primary-ink hover:bg-est-primary/10"
-              >
-                <Timer size={15} /> Simulado
-              </button>
-              <button
-                type="button"
-                onClick={() => setVista("temas")}
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-est-border px-3 py-3 text-sm font-bold text-est-fg-soft hover:bg-est-sunken hover:text-est-fg"
-              >
-                <ListTree size={15} /> Temas
-              </button>
+
+            {/* Cards de número: continuam na home, 2 colunas no mobile. */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-est-border bg-est-card p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-est-fg-soft">
+                  Revisões vencidas hoje
+                </p>
+                <p className="mt-1 flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums text-est-primary-ink">
+                  {dados.painel?.vencidasHoje ?? dados.reviews?.length ?? 0}
+                  <span className="text-xs font-medium text-est-fg-soft">cards</span>
+                </p>
+              </div>
+              <div className="rounded-xl border border-est-border bg-est-card p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-est-fg-soft">
+                  Cobertura do programa
+                </p>
+                <p className="mt-1 flex flex-wrap items-baseline gap-x-1 text-xl font-bold tabular-nums text-est-primary-ink">
+                  {dados.painel ? `${dados.painel.cobertura.comDerivado}/${dados.painel.cobertura.total}` : "—"}
+                  <span className="text-xs font-medium text-est-fg-soft">microtemas</span>
+                </p>
+                {/* Carta 3: cobertura sustentada só por questão gerada é declarada
+                    junto do número, não somada em silêncio a material validado. */}
+                {!!dados.painel?.cobertura.soGerada && (
+                  <p className="mt-0.5 text-[0.7rem] font-medium text-est-warning">
+                    {dados.painel.cobertura.soGerada} só com questão gerada
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        )}
-
-        {/* Vista F1b: sessão zero-decisão ou simulado substituem o banco.
-            O guard !dados.bloqueado estreita a union para o tipo completo. */}
-        {vista === "temas" && !dados.bloqueado ? (
+        ) : vista === "temas" && !dados.bloqueado ? (
           <div className="mt-6">
             <button
               type="button"
-              onClick={() => setVista("banco")}
+              onClick={() => setVista("home")}
               className="mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-est-border px-3 py-2.5 text-xs font-bold text-est-fg-soft transition-colors hover:bg-est-sunken hover:text-est-fg"
             >
-              <ArrowLeft size={14} /> Voltar ao banco
+              <ArrowLeft size={14} /> Voltar
             </button>
             {dados.arvoreTemas && dados.arvoreTemas.length > 0 ? (
               <MenuTemas modulos={dados.arvoreTemas} aoEscolher={escolherTema} />
@@ -621,8 +678,9 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
               token={token}
               pin={pin}
               dados={{ ...dados, questoes }}
+              orcamentoInicial={ORÇAMENTO_HOME}
               aoFechar={(salvou) => {
-                setVista("banco");
+                setVista("home");
                 if (salvou) {
                   // Reviews/erradas mudaram no Zeno — busca de novo COM o PIN.
                   void desbloquear();
@@ -637,13 +695,23 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
               pin={pin}
               dados={{ ...dados, questoes }}
               aoFechar={(salvou) => {
-                setVista("banco");
+                setVista("home");
                 if (salvou) void desbloquear();
               }}
             />
           </div>
         ) : (
           <>
+            {/* Banco aberto pelo "Mais": a porta continua um clique acima. */}
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setVista("home")}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-est-border px-3 py-2.5 text-xs font-bold text-est-fg-soft transition-colors hover:bg-est-sunken hover:text-est-fg"
+              >
+                <ArrowLeft size={14} /> Voltar
+              </button>
+            </div>
         {/* Filtros: busca + chips de origem (com contagem) e de tipo */}
         <div className="mt-6 space-y-3">
           <div className="relative">
@@ -974,7 +1042,8 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
                   Você já respondeu todas as {questoes.length} questões
                 </p>
                 <p className="mt-1 text-sm text-est-fg-soft">
-                  Abra “Já respondidas” para revisar, ou “Estudar agora” para as revisões vencidas.
+                  Abra “Já respondidas” para revisar, ou volte para a home e estude 20 min — a fila
+                  traz as revisões vencidas.
                 </p>
               </>
             ) : filtroEstado === "respondidas" && contagemEstado.respondidas === 0 ? (
@@ -1048,36 +1117,9 @@ export default function EstudosClient({ token, inicial, pinInicial, aoVoltar }: 
                     )}
                   </span>
                 )}
-                <span className="text-est-fg-soft">
-                  Oficial:{" "}
-                  <strong className="text-est-fg">
-                    {sessao.nOficial < 1
-                      ? "—"
-                      : `${fmt1((sessao.acOficial / sessao.nOficial) * 100)}%`}
-                  </strong>{" "}
-                  (n={sessao.nOficial})
-                  {sessao.nOficial >= 1 && ` ±${fmt1(margemBinomial(sessao.nOficial) * 100)}pp`}
-                </span>
-                <span className="text-est-fg-soft">
-                  Cursinho:{" "}
-                  <strong className="text-est-fg">
-                    {sessao.nDigitada < 1
-                      ? "—"
-                      : `${fmt1((sessao.acDigitada / sessao.nDigitada) * 100)}%`}
-                  </strong>{" "}
-                  (n={sessao.nDigitada})
-                  {sessao.nDigitada >= 1 && ` ±${fmt1(margemBinomial(sessao.nDigitada) * 100)}pp`}
-                </span>
-                <span className="text-est-fg-soft">
-                  Gerada:{" "}
-                  <strong className="text-est-fg">
-                    {sessao.nGerada < 1
-                      ? "—"
-                      : `${fmt1((sessao.acGerada / sessao.nGerada) * 100)}%`}
-                  </strong>{" "}
-                  (n={sessao.nGerada})
-                  {sessao.nGerada >= 1 && ` ±${fmt1(margemBinomial(sessao.nGerada) * 100)}pp`}
-                </span>
+                <StatSessao rotulo="Oficial" acertos={sessao.acOficial} n={sessao.nOficial} />
+                <StatSessao rotulo="Cursinho" acertos={sessao.acDigitada} n={sessao.nDigitada} />
+                <StatSessao rotulo="Gerada" acertos={sessao.acGerada} n={sessao.nGerada} />
               </div>
               <button
                 type="button"

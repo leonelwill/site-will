@@ -143,7 +143,6 @@ export interface ModuloDeTemas {
 }
 
 export interface PainelHome {
-  diasParaProva: number | null;
   vencidasHoje: number;
   cobertura: {
     comDerivado: number;
@@ -377,25 +376,111 @@ export async function postarFeedback(
   throw new EstudoApiError(`Zeno respondeu ${resp.status}`, resp.status);
 }
 
-// ── Data da prova (molde de dataPorExtenso do evento.ts: datas puras, UTC) ──
+// ── Fila de estudo (espelho de zeno_cloud/src/lib/estudos/fila.ts) ──────────
+// A decisão de montagem é do Zeno; aqui é o espelho testável que o client usa
+// para a fila da sessão e a prévia da home — mesma função, mesmos números.
+// W5: o sistema não tem prazo; nada aqui lê `dataProva`.
 
-/** 'YYYY-MM-DD' → 'DD/MM/AAAA' sem passar por Date local (fuso). */
-export function formatarDataProva(iso: string): string {
-  const [ano, mes, dia] = iso.slice(0, 10).split("-").map(Number);
-  if (!ano || !mes || !dia) return iso;
-  return `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${ano}`;
+/** Custo padrão de cada tipo de item, em minutos. */
+export const MINUTOS_CARD = 1;
+export const MINUTOS_QUESTAO = 2;
+
+/** 'YYYY-MM-DD' no fuso LOCAL — a única fonte de "hoje" do Estudos. */
+export function hojeLocalISO(): string {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
+}
+
+export interface ItemFilaEstudo {
+  tipo: "card" | "questao";
+  card?: CardEstudo;
+  questao?: Questao;
+}
+
+export interface FilaEstudoMontada {
+  itens: ItemFilaEstudo[];
+  minutos: number;
+  composicao: { vencidas: number; erradas: number; novas: number };
 }
 
 /**
- * Dias corridos de hoje até a prova (diferença de datas puras em UTC, sem
- * fração). null se a prova já passou.
+ * Monta a fila zero-decisão dentro do orçamento em minutos: vencidas (due mais
+ * antigo primeiro) → erradas recentes (na ordem) → novas sem review (primeiro
+ * as do microtema alvo). O orçamento fecha em ITEM inteiro — o próximo entra
+ * só se couber inteiro, nunca se corta um raciocínio ao meio.
  */
-export function diasCorridosAteProva(iso: string): number | null {
-  const [ano, mes, dia] = iso.slice(0, 10).split("-").map(Number);
-  if (!ano || !mes || !dia) return null;
-  const hoje = new Date();
-  const alvo = Date.UTC(ano, mes - 1, dia);
-  const base = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  const dias = Math.round((alvo - base) / 86_400_000);
-  return dias > 0 ? dias : null;
+export function montarFilaEstudo(
+  cards: CardEstudo[],
+  reviews: ReviewCard[],
+  questoes: Questao[],
+  erradasRecentes: string[],
+  microtemaAlvo: string | null | undefined,
+  orcamento: number,
+  hoje: string = hojeLocalISO()
+): FilaEstudoMontada {
+  const reviewPorCard = new Map(reviews.map((r) => [r.cardId, r]));
+
+  const vencidas = cards
+    .filter((c) => (reviewPorCard.get(c.id)?.dueEm ?? "9999") <= hoje)
+    .sort((a, b) => {
+      const da = reviewPorCard.get(a.id)!.dueEm;
+      const db = reviewPorCard.get(b.id)!.dueEm;
+      return da < db ? -1 : da > db ? 1 : 0; // empate preserva a ordem, como o motor
+    });
+  const erradas = erradasRecentes
+    .map((id) => questoes.find((q) => q.id === id))
+    .filter((q): q is Questao => !!q);
+  const semReview = cards.filter((c) => !reviewPorCard.has(c.id));
+  const novasAlvo = semReview.filter((c) => c.microtemaPdId === microtemaAlvo);
+  const novasResto = semReview.filter((c) => c.microtemaPdId !== microtemaAlvo);
+
+  const ordenada: Array<{ item: ItemFilaEstudo; categoria: keyof FilaEstudoMontada["composicao"] }> = [
+    ...vencidas.map((card) => ({ item: { tipo: "card", card } as ItemFilaEstudo, categoria: "vencidas" as const })),
+    ...erradas.map((questao) => ({ item: { tipo: "questao", questao } as ItemFilaEstudo, categoria: "erradas" as const })),
+    ...novasAlvo.map((card) => ({ item: { tipo: "card", card } as ItemFilaEstudo, categoria: "novas" as const })),
+    ...novasResto.map((card) => ({ item: { tipo: "card", card } as ItemFilaEstudo, categoria: "novas" as const })),
+  ];
+
+  const itens: ItemFilaEstudo[] = [];
+  const composicao = { vencidas: 0, erradas: 0, novas: 0 };
+  let minutos = 0;
+  for (const { item, categoria } of ordenada) {
+    const custo = item.tipo === "card" ? MINUTOS_CARD : MINUTOS_QUESTAO;
+    if (minutos + custo > orcamento) break;
+    itens.push(item);
+    composicao[categoria]++;
+    minutos += custo;
+  }
+  return { itens, minutos, composicao };
+}
+
+/**
+ * Intervalo de Wilson 95% para proporção de acertos — a régua única do Zeno
+ * Estudos. Espelho declarado de zeno_cloud/src/lib/estudos/margem.ts (repos
+ * separados, sem pacote compartilhado): mudou lá, muda aqui, com teste nos
+ * dois lados.
+ */
+export function wilson(
+  acertos: number,
+  n: number,
+  z = 1.96
+): { p: number; inferior: number; superior: number } {
+  if (n < 1) throw new Error("wilson exige n >= 1 (amostra vazia não tem intervalo)");
+  if (acertos < 0 || acertos > n)
+    throw new Error(`acertos (${acertos}) fora do intervalo 0 a ${n}`);
+  const p = acertos / n;
+  const denom = n + z * z;
+  const centro = (p * n + (z * z) / 2) / denom;
+  const meia = (z / denom) * Math.sqrt(p * (1 - p) * n + (z * z) / 4);
+  return { p, inferior: centro - meia, superior: centro + meia };
+}
+
+/** "43,8% · IC95 23,1%–66,8% · n=16" — o formato único de percentual do Estudos. */
+export function acertoComMargem(acertos: number, n: number): string {
+  const fmt = (x: number): string => {
+    const s = x.toFixed(1).replace(".", ",");
+    return s === "-0,0" ? "0,0" : s; // zero negativo do float na subtração, não clamp
+  };
+  const { p, inferior, superior } = wilson(acertos, n);
+  return `${fmt(p * 100)}% · IC95 ${fmt(inferior * 100)}%–${fmt(superior * 100)}% · n=${n}`;
 }

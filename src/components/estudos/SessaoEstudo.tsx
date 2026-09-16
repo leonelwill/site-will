@@ -3,10 +3,10 @@
 /**
  * Sessão "Estudar agora" — fila zero-decisão (R3 §N2, aprovada na R6).
  *
- * Fila (espelho de zeno_cloud/src/lib/estudos/fila.ts — repos separados):
- * SRS vencidas (due mais antigo primeiro) → erradas da última sessão →
- * novas do microtema menos coberto; orçamento em MINUTOS fecha em ITEM
- * inteiro (nunca corta no meio de um raciocínio).
+ * Fila (mesma `montarFilaEstudo` da lib, espelho de
+ * zeno_cloud/src/lib/estudos/fila.ts): SRS vencidas (due mais antigo primeiro)
+ * → erradas da última sessão → novas do microtema menos coberto; orçamento em
+ * MINUTOS fecha em ITEM inteiro (nunca corta no meio de um raciocínio).
  *
  * Rascunho retomável em localStorage (`zeno:est:sessao:<token>`) — dado
  * pessoal do dispositivo, não é segredo (o PIN continua só em memória).
@@ -20,23 +20,16 @@ import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
   dicaDaQuestao,
+  hojeLocalISO,
+  montarFilaEstudo,
   postarFeedback,
   postarSessao,
-  type CardEstudo,
   type EstudoCompleto,
   type ItemSessaoPost,
-  type Questao,
-  type ReviewCard,
 } from "@/lib/estudos";
 import { cn } from "@/lib/utils";
 
-const MINUTOS_CARD = 1;
-const MINUTOS_QUESTAO = 2;
-const ORCAMENTOS = [15, 30, 45, 60];
-
-type ItemFila =
-  | { tipo: "card"; card: CardEstudo }
-  | { tipo: "questao"; questao: Questao };
+const ORCAMENTOS = [20, 30, 45, 60];
 
 interface Rascunho {
   inicioEm: string;
@@ -55,61 +48,18 @@ interface Feedback {
   gabaritoEhOficial: boolean;
 }
 
-function hojeISO(): string {
-  const h = new Date();
-  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
-}
-
-/** Espelho client da montagemFila (decisão do Zeno é a fonte; aqui é conveniência). */
-function montarFilaLocal(
-  cards: CardEstudo[],
-  reviews: ReviewCard[],
-  questoes: Questao[],
-  erradasRecentes: string[],
-  microtemaAlvo: string | null | undefined,
-  orcamento: number
-): { itens: ItemFila[]; minutos: number } {
-  const hoje = hojeISO();
-  const reviewPorCard = new Map(reviews.map((r) => [r.cardId, r]));
-
-  const vencidas = cards
-    .filter((c) => (reviewPorCard.get(c.id)?.dueEm ?? "9999") <= hoje)
-    .sort((a, b) =>
-      reviewPorCard.get(a.id)!.dueEm < reviewPorCard.get(b.id)!.dueEm ? -1 : 1
-    );
-  const erradas = erradasRecentes
-    .map((id) => questoes.find((q) => q.id === id))
-    .filter((q): q is Questao => !!q);
-  const semReview = cards.filter((c) => !reviewPorCard.has(c.id));
-  const novasAlvo = semReview.filter((c) => c.microtemaPdId === microtemaAlvo);
-  const novasResto = semReview.filter((c) => c.microtemaPdId !== microtemaAlvo);
-
-  const itens: ItemFila[] = [];
-  let minutos = 0;
-  const custo = (i: ItemFila) => (i.tipo === "card" ? MINUTOS_CARD : MINUTOS_QUESTAO);
-  for (const item of [
-    ...vencidas.map((card): ItemFila => ({ tipo: "card", card })),
-    ...erradas.map((questao): ItemFila => ({ tipo: "questao", questao })),
-    ...novasAlvo.map((card): ItemFila => ({ tipo: "card", card })),
-    ...novasResto.map((card): ItemFila => ({ tipo: "card", card })),
-  ]) {
-    if (minutos + custo(item) > orcamento) break;
-    itens.push(item);
-    minutos += custo(item);
-  }
-  return { itens, minutos };
-}
-
 interface Props {
   token: string;
   pin: string;
   dados: EstudoCompleto;
   aoFechar: (salvou: boolean) => void;
+  /** Minutos pedidos na porta (home) — sem ela, 20. */
+  orcamentoInicial?: number;
 }
 
-export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
+export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoInicial }: Props) {
   const chaveRascunho = `zeno:est:sessao:${token}`;
-  const [orcamento, setOrcamento] = useState(45);
+  const [orcamento, setOrcamento] = useState(orcamentoInicial ?? 20);
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
   const [retomado, setRetomado] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -142,7 +92,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
 
   const fila = useMemo(
     () =>
-      montarFilaLocal(
+      montarFilaEstudo(
         dados.cards ?? [],
         dados.reviews ?? [],
         dados.questoes,
@@ -240,13 +190,14 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
     let acertos = 0;
     let comDica = 0;
     for (const item of itens) {
-      const id = item.tipo === "card" ? item.card.id : item.questao.id;
+      const id = item.tipo === "card" ? item.card?.id : item.questao?.id;
+      if (!id) continue;
       const resultado = rascunho.resultados[id];
       if (!resultado) continue;
       if (resultado === "certo") acertos++;
       if (item.tipo === "card") {
         postItens.push({ cardId: id, resultado });
-      } else {
+      } else if (item.questao) {
         const usouDica = !!rascunho.dicas?.[id];
         if (usouDica) comDica++;
         postItens.push({
@@ -265,7 +216,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
         inicioEm: rascunho.inicioEm,
         fimEm,
         minutos,
-        competenciaEm: hojeISO(),
+        competenciaEm: hojeLocalISO(),
         itens: postItens,
       });
       try {
@@ -294,7 +245,7 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar }: Props) {
           {resumo.comDica > 0 && ` · ${resumo.comDica} com dica`}
         </p>
         <p className="mt-2 text-xs text-est-fg-soft">
-          Revisões agendadas — nenhuma além da véspera da prova.
+          Revisões agendadas pelo SM-2.
         </p>
         <button
           type="button"

@@ -14,14 +14,8 @@
  */
 
 import { useCallback, useState } from "react";
-import { ArrowRight, BookOpen, Calendar, Layers, Lock } from "lucide-react";
-import {
-  diasCorridosAteProva,
-  formatarDataProva,
-  type CursoNoHub,
-  type Estudo,
-  type Hub,
-} from "@/lib/estudos";
+import { ArrowRight, BookOpen, Layers, Lock } from "lucide-react";
+import { type CursoNoHub, type Estudo, type Hub } from "@/lib/estudos";
 import EmblemaCert from "./EmblemaCert";
 import EstudosClient from "./EstudosClient";
 
@@ -242,7 +236,6 @@ function CardCurso({
   onAbrir: () => void;
 }) {
   const vazio = curso.contagens.questoes === 0 && curso.cards === 0;
-  const dias = curso.dataProva ? diasCorridosAteProva(curso.dataProva) : null;
 
   const miolo = (
     <>
@@ -273,19 +266,6 @@ function CardCurso({
         </div>
       </div>
 
-      {curso.dataProva && (
-        // Dias corridos dependem do relógio local × servidor: diferença de fuso
-        // não deve virar erro de hidratação.
-        <p
-          suppressHydrationWarning
-          className="mt-3 flex w-fit items-center gap-1.5 rounded-lg bg-est-sunken px-2.5 py-1.5 text-xs font-medium text-est-fg-soft"
-        >
-          <Calendar size={13} className="shrink-0 text-est-primary-ink" aria-hidden />
-          Prova {formatarDataProva(curso.dataProva)}
-          {dias !== null && ` · ${dias} ${dias === 1 ? "dia corrido" : "dias corridos"}`}
-        </p>
-      )}
-
       {vazio && (
         <p className="mt-3 text-xs font-medium text-est-warning">
           Sem material ingerido ainda.
@@ -295,7 +275,7 @@ function CardCurso({
   );
 
   // `flex-col` + `mt-auto` no rodapé: cards da mesma linha do grid terminam
-  // alinhados mesmo quando só um deles tem data de prova.
+  // alinhados mesmo quando um deles tem mais linhas de conteúdo que o outro.
   const base =
     "flex h-full w-full flex-col rounded-2xl border border-est-border bg-est-card p-5 shadow-sm transition-colors";
 

@@ -20,6 +20,7 @@ import { AlertTriangle, Clock, RotateCcw } from "lucide-react";
 import {
   RÓTULOS_ORIGEM,
   RÓTULOS_TIPO,
+  acertoComMargem,
   postarSessao,
   type EstudoCompleto,
   type ItemSessaoPost,
@@ -27,12 +28,6 @@ import {
   type TipoQuestao,
 } from "@/lib/estudos";
 import { cn } from "@/lib/utils";
-
-/** espelho de margemBinomial (zeno_cloud) — n=0 não tem texto. */
-function margemBinomial(n: number): number {
-  return 1.96 * Math.sqrt(0.25 / n);
-}
-const fmt1 = (x: number) => x.toFixed(1).replace(".", ",");
 
 interface Grupo {
   tipos: TipoQuestao[];
@@ -266,7 +261,7 @@ export default function Simulado({ pin, token, dados, aoFechar }: Props) {
       return {
         n,
         acertos,
-        texto: n > 0 ? `${fmt1((acertos / n) * 100)}% ± ${fmt1(margemBinomial(n) * 100)}pp` : null,
+        texto: n > 0 ? acertoComMargem(acertos, n) : null,
       };
     };
     const oficial = porOrigem("simulado-oficial");
