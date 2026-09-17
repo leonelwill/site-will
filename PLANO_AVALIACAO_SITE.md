@@ -301,6 +301,21 @@ Não repita fases anteriores em cada checkpoint. Faça smoke direcionado apenas 
 **Evidência:** —
 **FALTA:** executar a fase inteira.
 
+## Status geral
+
+| Fase | Estado | Evidência |
+|---|---|---|
+| F0 — Baseline e inventário | ✅ FEITA | `.site-qa/2026-09-16/fase-0/MANIFESTO.md`, `browser-metadata.json`, 6 PNGs com SHA-256 |
+| F1 — Jornadas, funções e estados | ✅ FEITA | `.site-qa/2026-09-16/fase-1/MANIFESTO.md`, `functional-results.json`, `verified-cases.json`, capturas |
+| F2 — Design, narrativa, conversão e confiança | ⬜ A FAZER | Nenhum commit tocou `src/components/` ou `globals.css` após a sessão de 16/09 |
+| F3 — Efeitos, animações e movimento | ⬜ A FAZER | Nenhuma evidência; `AnimateOnScroll.tsx`, `Counter.tsx` inalterados |
+| F4 — Imagens, logos e mídia | ⬜ A FAZER | Nenhuma evidência; nenhum inventário de mídia produzido |
+| F5 — Responsividade e acessibilidade | ⬜ A FAZER | Nenhuma evidência; `web-design-guidelines` não executada |
+| F6 — Performance percebida e integridade técnica | ⬜ A FAZER | Nenhuma evidência; métricas não coletadas |
+| F7 — Síntese e plano de melhorias | ⬜ A FAZER | Nenhum laudo finalizado; `RELATORIO_QA_SITE_2026-09-16.md` ainda cobre só F0–F1 |
+
+**Retomar aqui:** Fase 2 — Design, narrativa, conversão e confiança. Iniciar com visita fresca ao site, revisar primeira dobra/CTA/hierarquia, comparar tokens com `globals.css`, e registrar achados seguindo o contrato (atributo → problema → adaptação → custo/risco). A evidência de F0–F1 está sólida; os achados F1 (FUN-01, A11Y-01, FUN-02, A11Y-02) ficam registrados no laudo para verificação cruzada quando F5 rodar.
+
 ## Checkpoint posterior, fora desta auditoria
 
 Se o William aprovar correções, criar plano de implementação separado. Após o último commit que muda pixels, repetir apenas casos afetados + smoke completo da homepage e comparar evidências antes/depois. Não misturar essa futura implementação com o laudo original.
