@@ -357,7 +357,8 @@ export default function SessaoEstudo({ token, pin, dados, aoFechar, orcamentoIni
         </p>
         {resumo.retestes > 0 && (
           <p className="mt-1 text-sm text-est-fg-soft">
-            {resumo.retestes} retestes · {resumo.retidos} retidos
+            {resumo.retestes} {resumo.retestes === 1 ? "reteste" : "retestes"} · {resumo.retidos}{" "}
+            {resumo.retidos === 1 ? "retido" : "retidos"}
           </p>
         )}
         <p className="mt-2 text-xs text-est-fg-soft">
